@@ -1,0 +1,11 @@
+{
+  "name": "unparseable_line",
+  "description": "A middle line is scribbled/garbled: cannot-parse is distinct from invalid; no divergent line is reported but the attempt is not certifiably correct",
+  "problem_id": "ts-01",
+  "lines": ["2x+3=11", "2x=8", "garbage!!!line", "x=4"],
+  "expected": {
+    "correct": false,
+    "divergent_line_index": null,
+    "final_answer_correct": true
+  }
+}

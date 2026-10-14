@@ -1,0 +1,11 @@
+{
+  "name": "arithmetic_slip",
+  "description": "11-3 computed as 9; divergence must land on line index 1",
+  "problem_id": "ts-01",
+  "lines": ["2x+3=11", "2x=9", "x=\\frac{9}{2}"],
+  "expected": {
+    "correct": false,
+    "divergent_line_index": 1,
+    "final_answer_correct": false
+  }
+}

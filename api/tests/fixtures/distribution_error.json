@@ -1,0 +1,11 @@
+{
+  "name": "classic_distribution_error",
+  "description": "3(x-4) misread as 3x-4; later lines are locally valid given the mistake, so divergence must be exactly index 1",
+  "problem_id": "dist-01",
+  "lines": ["3(x-4)=15", "3x-4=15", "3x=19", "x=\\frac{19}{3}"],
+  "expected": {
+    "correct": false,
+    "divergent_line_index": 1,
+    "final_answer_correct": false
+  }
+}

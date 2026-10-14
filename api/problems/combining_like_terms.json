@@ -1,0 +1,30 @@
+[
+  {
+    "id": "clt-01",
+    "title": "Combine variable terms",
+    "prompt_latex": "3x+2x=20",
+    "answer_latex": "x=4",
+    "skills": ["combining-like-terms", "one-step-equations"]
+  },
+  {
+    "id": "clt-02",
+    "title": "Combine terms with a constant",
+    "prompt_latex": "7x-3x+2=14",
+    "answer_latex": "x=3",
+    "skills": ["combining-like-terms", "two-step-equations"]
+  },
+  {
+    "id": "clt-03",
+    "title": "Combine terms across constants",
+    "prompt_latex": "5x+2-3x=10",
+    "answer_latex": "x=4",
+    "skills": ["combining-like-terms", "two-step-equations"]
+  },
+  {
+    "id": "clt-04",
+    "title": "Terms on both sides",
+    "prompt_latex": "6x-1=2x+7",
+    "answer_latex": "x=2",
+    "skills": ["combining-like-terms", "variables-on-both-sides"]
+  }
+]

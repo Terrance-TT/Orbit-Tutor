@@ -1,0 +1,11 @@
+{
+  "name": "clean_correct_path",
+  "description": "Straightforward correct solution of 2x+3=11",
+  "problem_id": "ts-01",
+  "lines": ["2x+3=11", "2x=8", "x=4"],
+  "expected": {
+    "correct": true,
+    "divergent_line_index": null,
+    "final_answer_correct": true
+  }
+}

@@ -1,0 +1,30 @@
+[
+  {
+    "id": "os-01",
+    "title": "Balancing addition",
+    "prompt_latex": "x+5=12",
+    "answer_latex": "x=7",
+    "skills": ["one-step-equations", "inverse-operations"]
+  },
+  {
+    "id": "os-02",
+    "title": "Balancing subtraction",
+    "prompt_latex": "x-8=3",
+    "answer_latex": "x=11",
+    "skills": ["one-step-equations", "inverse-operations"]
+  },
+  {
+    "id": "os-03",
+    "title": "Undoing multiplication",
+    "prompt_latex": "4x=20",
+    "answer_latex": "x=5",
+    "skills": ["one-step-equations", "inverse-operations"]
+  },
+  {
+    "id": "os-04",
+    "title": "Undoing division",
+    "prompt_latex": "\\frac{x}{3}=7",
+    "answer_latex": "x=21",
+    "skills": ["one-step-equations", "inverse-operations", "fractions"]
+  }
+]

@@ -1,0 +1,11 @@
+{
+  "name": "factoring_path",
+  "description": "Correct solve-by-factoring route for x^2-6x+9=0",
+  "problem_id": "fact-01",
+  "lines": ["x^2-6x+9=0", "(x-3)^2=0", "x-3=0", "x=3"],
+  "expected": {
+    "correct": true,
+    "divergent_line_index": null,
+    "final_answer_correct": true
+  }
+}

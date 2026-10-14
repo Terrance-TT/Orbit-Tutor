@@ -1,0 +1,30 @@
+[
+  {
+    "id": "dist-01",
+    "title": "Distribute a positive factor",
+    "prompt_latex": "3(x-4)=15",
+    "answer_latex": "x=9",
+    "skills": ["distribution", "two-step-equations"]
+  },
+  {
+    "id": "dist-02",
+    "title": "Distribute over a sum",
+    "prompt_latex": "2(x+5)=18",
+    "answer_latex": "x=4",
+    "skills": ["distribution", "two-step-equations"]
+  },
+  {
+    "id": "dist-03",
+    "title": "Distribute a negative factor",
+    "prompt_latex": "-2(x-6)=8",
+    "answer_latex": "x=2",
+    "skills": ["distribution", "negative-coefficients", "sign-rules"]
+  },
+  {
+    "id": "dist-04",
+    "title": "Distribute with an inner coefficient",
+    "prompt_latex": "4(2x-1)=20",
+    "answer_latex": "x=3",
+    "skills": ["distribution", "two-step-equations"]
+  }
+]

@@ -1,0 +1,11 @@
+{
+  "name": "sign_error_distributing_negative",
+  "description": "Student distributes -2 over (x-6) and keeps -12 instead of +12; divergence must land on line index 1",
+  "problem_id": "dist-03",
+  "lines": ["-2(x-6)=8", "-2x-12=8", "-2x=20", "x=-10"],
+  "expected": {
+    "correct": false,
+    "divergent_line_index": 1,
+    "final_answer_correct": false
+  }
+}

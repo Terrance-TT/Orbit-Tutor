@@ -1,0 +1,30 @@
+[
+  {
+    "id": "ts-01",
+    "title": "Two steps: add then divide",
+    "prompt_latex": "2x+3=11",
+    "answer_latex": "x=4",
+    "skills": ["two-step-equations", "inverse-operations"]
+  },
+  {
+    "id": "ts-02",
+    "title": "Two steps: subtract then divide",
+    "prompt_latex": "5x-7=18",
+    "answer_latex": "x=5",
+    "skills": ["two-step-equations", "inverse-operations"]
+  },
+  {
+    "id": "ts-03",
+    "title": "Two steps with a fraction",
+    "prompt_latex": "\\frac{x}{4}+2=6",
+    "answer_latex": "x=16",
+    "skills": ["two-step-equations", "fractions"]
+  },
+  {
+    "id": "ts-04",
+    "title": "Variable term on the left of a difference",
+    "prompt_latex": "9-2x=3",
+    "answer_latex": "x=3",
+    "skills": ["two-step-equations", "negative-coefficients"]
+  }
+]

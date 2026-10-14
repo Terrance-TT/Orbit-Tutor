@@ -1,0 +1,23 @@
+[
+  {
+    "id": "fact-01",
+    "title": "Perfect square trinomial",
+    "prompt_latex": "x^2-6x+9=0",
+    "answer_latex": "x=3",
+    "skills": ["factoring", "quadratics", "perfect-squares"]
+  },
+  {
+    "id": "fact-02",
+    "title": "Another perfect square",
+    "prompt_latex": "x^2-4x+4=0",
+    "answer_latex": "x=2",
+    "skills": ["factoring", "quadratics", "perfect-squares"]
+  },
+  {
+    "id": "fact-03",
+    "title": "Perfect square with a negative root",
+    "prompt_latex": "x^2+8x+16=0",
+    "answer_latex": "x=-4",
+    "skills": ["factoring", "quadratics", "perfect-squares"]
+  }
+]

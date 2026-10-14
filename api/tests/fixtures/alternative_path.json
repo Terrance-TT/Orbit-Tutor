@@ -1,0 +1,11 @@
+{
+  "name": "alternative_valid_path",
+  "description": "Divide-before-distributing route for 3(x-4)=15 — must be accepted even though it is not the scripted route",
+  "problem_id": "dist-01",
+  "lines": ["3(x-4)=15", "x-4=5", "x=9"],
+  "expected": {
+    "correct": true,
+    "divergent_line_index": null,
+    "final_answer_correct": true
+  }
+}
