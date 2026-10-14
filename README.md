@@ -53,11 +53,13 @@ See `web/README.md`. The frontend expects the API at `http://localhost:8000`.
 
 ## Deployment (Railway)
 
-Deploy as **two services** from this one repo:
+Deploy as **two services** from this one repo. Each service ships a
+`Dockerfile`, which Railway detects automatically:
 
-1. **api** — root directory `api/`. Python service; start command
-   `uvicorn app.main:app --host 0.0.0.0 --port $PORT`.
-2. **web** — root directory `web/`. Next.js service.
+1. **api** — root directory `api/` (`api/Dockerfile`; starts uvicorn on
+   `$PORT`).
+2. **web** — root directory `web/` (`web/Dockerfile`; `npm run build` then
+   `npm run start` on `$PORT`).
 
 Mathpix credentials are managed via the **Railway secrets manager** on the `api`
 service — never commit them:
@@ -66,5 +68,10 @@ service — never commit them:
 - `MATHPIX_APP_KEY`
 - `MATHPIX_MOCK=false` (required in production so the live client is used)
 
-Also set `WEB_ORIGIN` on `api` to the deployed web URL, and point `web` at the
-deployed `api` URL.
+Also set:
+
+- `WEB_ORIGIN` on `api` — the deployed web URL (CORS).
+- `NEXT_PUBLIC_API_URL` on `web` — the deployed api URL. This is a **build-time**
+  variable (inlined into the Next.js bundle); in Railway, add it under the web
+  service's build variables so the Docker build sees it, and redeploy the web
+  service if the api URL ever changes.
