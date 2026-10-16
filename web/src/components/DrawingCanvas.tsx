@@ -21,7 +21,6 @@ export default function DrawingCanvas({
   const activePointerIdRef = useRef<number | null>(null);
   const strokesRef = useRef(strokes);
   const rectRef = useRef<DOMRect | null>(null);
-  const rafRef = useRef<number | null>(null);
   const drawnPointsRef = useRef(0);
 
   // Full redraw: completed strokes plus the in-progress one. Only used when
@@ -41,10 +40,10 @@ export default function DrawingCanvas({
   }, []);
 
   // Incremental drawing: paint just the new points of the active stroke on
-  // top of the existing bitmap, at most once per animation frame. This keeps
-  // writing smooth even with a full page of ink.
+  // top of the existing bitmap. Called synchronously from pointer events —
+  // iPad Safari suspends requestAnimationFrame during an active Pencil
+  // contact, so scheduling frames instead would delay ink until pointerup.
   const drawPending = useCallback(() => {
-    rafRef.current = null;
     const canvas = canvasRef.current;
     const active = activeStrokeRef.current;
     if (!canvas || !active) return;
@@ -77,12 +76,6 @@ export default function DrawingCanvas({
     drawnPointsRef.current = pts.length;
   }, []);
 
-  const scheduleDraw = useCallback(() => {
-    if (rafRef.current === null) {
-      rafRef.current = requestAnimationFrame(drawPending);
-    }
-  }, [drawPending]);
-
   // Keep the canvas bitmap sized to its container (with DPR) and redraw on
   // resize. Stroke points are stored in CSS pixels, so resizing never
   // distorts existing ink.
@@ -109,13 +102,6 @@ export default function DrawingCanvas({
     redraw();
   }, [strokes, redraw]);
 
-  useEffect(
-    () => () => {
-      if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
-    },
-    [],
-  );
-
   const toPoint = (clientX: number, clientY: number, t: number): StrokePoint => {
     const rect =
       rectRef.current ?? canvasRef.current!.getBoundingClientRect();
@@ -135,7 +121,7 @@ export default function DrawingCanvas({
       points: [toPoint(e.clientX, e.clientY, e.timeStamp)],
     };
     drawnPointsRef.current = 0;
-    scheduleDraw();
+    drawPending();
   };
 
   const handlePointerMove = (e: React.PointerEvent<HTMLCanvasElement>) => {
@@ -149,17 +135,14 @@ export default function DrawingCanvas({
     for (const ev of coalesced) {
       active.points.push(toPoint(ev.clientX, ev.clientY, ev.timeStamp));
     }
-    scheduleDraw();
+    drawPending();
   };
 
   const finishStroke = (e: React.PointerEvent<HTMLCanvasElement>) => {
     if (e.pointerId !== activePointerIdRef.current) return;
     const active = activeStrokeRef.current;
     if (!active) return;
-    if (rafRef.current !== null) {
-      cancelAnimationFrame(rafRef.current);
-      rafRef.current = null;
-    }
+    drawPending(); // flush any points not yet painted
     activeStrokeRef.current = null;
     activePointerIdRef.current = null;
     drawnPointsRef.current = 0;
