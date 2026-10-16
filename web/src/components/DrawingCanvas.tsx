@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef } from "react";
-import { drawStrokes } from "@/lib/ink";
+import { drawStrokes, INK_COLOR, INK_WIDTH } from "@/lib/ink";
 import type { Stroke, StrokePoint } from "@/lib/types";
 
 interface DrawingCanvasProps {
@@ -20,7 +20,12 @@ export default function DrawingCanvas({
   const activeStrokeRef = useRef<Stroke | null>(null);
   const activePointerIdRef = useRef<number | null>(null);
   const strokesRef = useRef(strokes);
+  const rectRef = useRef<DOMRect | null>(null);
+  const rafRef = useRef<number | null>(null);
+  const drawnPointsRef = useRef(0);
 
+  // Full redraw: completed strokes plus the in-progress one. Only used when
+  // the stroke list changes or the canvas resizes — never per pointer event.
   const redraw = useCallback(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -34,6 +39,49 @@ export default function DrawingCanvas({
       drawStrokes(ctx, [activeStrokeRef.current]);
     }
   }, []);
+
+  // Incremental drawing: paint just the new points of the active stroke on
+  // top of the existing bitmap, at most once per animation frame. This keeps
+  // writing smooth even with a full page of ink.
+  const drawPending = useCallback(() => {
+    rafRef.current = null;
+    const canvas = canvasRef.current;
+    const active = activeStrokeRef.current;
+    if (!canvas || !active) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    const dpr = window.devicePixelRatio || 1;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.strokeStyle = INK_COLOR;
+    ctx.fillStyle = INK_COLOR;
+    ctx.lineWidth = INK_WIDTH;
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+
+    const pts = active.points;
+    if (pts.length === 1 && drawnPointsRef.current === 0) {
+      ctx.beginPath();
+      ctx.arc(pts[0].x, pts[0].y, INK_WIDTH / 2, 0, Math.PI * 2);
+      ctx.fill();
+      drawnPointsRef.current = 1;
+      return;
+    }
+    const start = Math.max(drawnPointsRef.current - 1, 0);
+    if (pts.length - start < 2) return;
+    ctx.beginPath();
+    ctx.moveTo(pts[start].x, pts[start].y);
+    for (let i = start + 1; i < pts.length; i++) {
+      ctx.lineTo(pts[i].x, pts[i].y);
+    }
+    ctx.stroke();
+    drawnPointsRef.current = pts.length;
+  }, []);
+
+  const scheduleDraw = useCallback(() => {
+    if (rafRef.current === null) {
+      rafRef.current = requestAnimationFrame(drawPending);
+    }
+  }, [drawPending]);
 
   // Keep the canvas bitmap sized to its container (with DPR) and redraw on
   // resize. Stroke points are stored in CSS pixels, so resizing never
@@ -61,9 +109,17 @@ export default function DrawingCanvas({
     redraw();
   }, [strokes, redraw]);
 
-  const toPoint = (e: React.PointerEvent): StrokePoint => {
-    const rect = canvasRef.current!.getBoundingClientRect();
-    return { x: e.clientX - rect.left, y: e.clientY - rect.top, t: e.timeStamp };
+  useEffect(
+    () => () => {
+      if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
+    },
+    [],
+  );
+
+  const toPoint = (clientX: number, clientY: number, t: number): StrokePoint => {
+    const rect =
+      rectRef.current ?? canvasRef.current!.getBoundingClientRect();
+    return { x: clientX - rect.left, y: clientY - rect.top, t };
   };
 
   const handlePointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
@@ -72,10 +128,14 @@ export default function DrawingCanvas({
     // ignored entirely so they never leave stray ink or trigger misclicks.
     if (e.pointerType === "touch") return;
     if (e.pointerType === "mouse" && e.button !== 0) return;
+    rectRef.current = canvasRef.current!.getBoundingClientRect();
     e.currentTarget.setPointerCapture(e.pointerId);
     activePointerIdRef.current = e.pointerId;
-    activeStrokeRef.current = { points: [toPoint(e)] };
-    redraw();
+    activeStrokeRef.current = {
+      points: [toPoint(e.clientX, e.clientY, e.timeStamp)],
+    };
+    drawnPointsRef.current = 0;
+    scheduleDraw();
   };
 
   const handlePointerMove = (e: React.PointerEvent<HTMLCanvasElement>) => {
@@ -87,22 +147,22 @@ export default function DrawingCanvas({
         ? e.nativeEvent.getCoalescedEvents()
         : [e.nativeEvent];
     for (const ev of coalesced) {
-      const rect = canvasRef.current!.getBoundingClientRect();
-      active.points.push({
-        x: ev.clientX - rect.left,
-        y: ev.clientY - rect.top,
-        t: ev.timeStamp,
-      });
+      active.points.push(toPoint(ev.clientX, ev.clientY, ev.timeStamp));
     }
-    redraw();
+    scheduleDraw();
   };
 
   const finishStroke = (e: React.PointerEvent<HTMLCanvasElement>) => {
     if (e.pointerId !== activePointerIdRef.current) return;
     const active = activeStrokeRef.current;
     if (!active) return;
+    if (rafRef.current !== null) {
+      cancelAnimationFrame(rafRef.current);
+      rafRef.current = null;
+    }
     activeStrokeRef.current = null;
     activePointerIdRef.current = null;
+    drawnPointsRef.current = 0;
     if (active.points.length > 0) {
       onStrokesChange([...strokesRef.current, active]);
     }

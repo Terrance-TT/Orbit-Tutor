@@ -109,11 +109,12 @@ export default function Home() {
     }
   }, []);
 
-  // Persist in-progress handwriting per problem.
+  // Persist in-progress handwriting per problem, debounced so serializing a
+  // large stroke history never blocks the main thread mid-writing.
   useEffect(() => {
-    if (problem && screen === "solve") {
-      saveStrokes(problem.id, strokes);
-    }
+    if (!problem || screen !== "solve") return;
+    const timer = setTimeout(() => saveStrokes(problem.id, strokes), 400);
+    return () => clearTimeout(timer);
   }, [problem, strokes, screen]);
 
   const handleSubmitHandwriting = async () => {
@@ -191,7 +192,7 @@ export default function Home() {
       {submitState.error && (
         <div
           role="alert"
-          className="mb-4 flex items-center justify-between gap-4 rounded-xl border border-red-200 bg-red-50 px-5 py-3 text-red-800"
+          className="fixed inset-x-4 top-4 z-50 mx-auto flex max-w-3xl items-center justify-between gap-4 rounded-xl border border-red-200 bg-red-50 px-5 py-3 text-red-800 shadow-lg"
         >
           <span>{submitState.error}</span>
           <button
