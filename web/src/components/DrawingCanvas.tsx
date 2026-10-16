@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { drawStrokes, INK_COLOR, INK_WIDTH } from "@/lib/ink";
 import type { Stroke, StrokePoint } from "@/lib/types";
 
@@ -18,10 +18,64 @@ export default function DrawingCanvas({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const activeStrokeRef = useRef<Stroke | null>(null);
-  const activePointerIdRef = useRef<number | null>(null);
   const strokesRef = useRef(strokes);
   const rectRef = useRef<DOMRect | null>(null);
   const drawnPointsRef = useRef(0);
+  const debugRef = useRef<HTMLDivElement>(null);
+  const [debug] = useState(
+    () =>
+      typeof window !== "undefined" &&
+      new URLSearchParams(window.location.search).has("debug"),
+  );
+
+  // Debug HUD (?debug=1): raw pointer events as the browser delivers them,
+  // independent of the drawing handlers — used to diagnose stylus behavior
+  // on devices we can't reproduce locally.
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    const hud = debugRef.current;
+    if (!debug || !canvas || !hud) return;
+    const lines: string[] = ["build ink-v4"];
+    const render = () => {
+      hud.textContent = lines.slice(0, 7).join("\n");
+    };
+    render();
+    const note = (msg: string) => {
+      lines.unshift(msg);
+      render();
+    };
+    const onMove: EventListener = (e) => {
+      const pe = e as PointerEvent;
+      const key = `move ${pe.pointerType} id=${pe.pointerId}`;
+      if (lines[0]?.startsWith(key)) {
+        const n = Number(lines[0].match(/×(\d+)/)?.[1] ?? 1) + 1;
+        lines[0] = `${key} ×${n}`;
+      } else {
+        lines.unshift(`${key} ×1`);
+      }
+      render();
+    };
+    const onEvent =
+      (label: string): EventListener =>
+      (e) => {
+        const pe = e as PointerEvent;
+        note(`${label} ${pe.pointerType} id=${pe.pointerId}`);
+      };
+    const handlers: Array<[string, EventListener]> = [
+      ["pointerdown", onEvent("down")],
+      ["pointermove", onMove],
+      ["pointerup", onEvent("up")],
+      ["pointercancel", onEvent("cancel")],
+    ];
+    for (const [type, handler] of handlers) {
+      canvas.addEventListener(type, handler);
+    }
+    return () => {
+      for (const [type, handler] of handlers) {
+        canvas.removeEventListener(type, handler);
+      }
+    };
+  }, [debug]);
 
   // Full redraw: completed strokes plus the in-progress one. Only used when
   // the stroke list changes or the canvas resizes — never per pointer event.
@@ -116,7 +170,6 @@ export default function DrawingCanvas({
     if (e.pointerType === "mouse" && e.button !== 0) return;
     rectRef.current = canvasRef.current!.getBoundingClientRect();
     e.currentTarget.setPointerCapture(e.pointerId);
-    activePointerIdRef.current = e.pointerId;
     activeStrokeRef.current = {
       points: [toPoint(e.clientX, e.clientY, e.timeStamp)],
     };
@@ -125,7 +178,9 @@ export default function DrawingCanvas({
   };
 
   const handlePointerMove = (e: React.PointerEvent<HTMLCanvasElement>) => {
-    if (e.pointerId !== activePointerIdRef.current) return;
+    // No pointerId matching: some browsers don't keep the id stable across
+    // a stylus's event sequence. Only touch is filtered out.
+    if (e.pointerType === "touch") return;
     const active = activeStrokeRef.current;
     if (!active) return;
     const coalesced =
@@ -139,12 +194,11 @@ export default function DrawingCanvas({
   };
 
   const finishStroke = (e: React.PointerEvent<HTMLCanvasElement>) => {
-    if (e.pointerId !== activePointerIdRef.current) return;
+    if (e.pointerType === "touch") return;
     const active = activeStrokeRef.current;
     if (!active) return;
     drawPending(); // flush any points not yet painted
     activeStrokeRef.current = null;
-    activePointerIdRef.current = null;
     drawnPointsRef.current = 0;
     if (active.points.length > 0) {
       onStrokesChange([...strokesRef.current, active]);
@@ -185,6 +239,12 @@ export default function DrawingCanvas({
           onPointerCancel={finishStroke}
           onContextMenu={(e) => e.preventDefault()}
         />
+        {debug && (
+          <div
+            ref={debugRef}
+            className="pointer-events-none absolute bottom-2 left-2 whitespace-pre rounded bg-white/85 p-2 font-mono text-[10px] text-slate-700"
+          />
+        )}
       </div>
     </div>
   );
