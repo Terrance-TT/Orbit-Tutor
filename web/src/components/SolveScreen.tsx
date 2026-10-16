@@ -43,6 +43,56 @@ export default function SolveScreen({
     }
   };
 
+  if (mode === "draw") {
+    // Full-viewport writing surface: nothing but a slim problem bar, the
+    // canvas, and the submit button — no page chrome to misclick.
+    return (
+      <div className="fixed inset-0 z-20 flex flex-col bg-white">
+        <div className="flex items-center gap-3 border-b border-slate-200 px-4 py-2">
+          <button
+            type="button"
+            onClick={onBack}
+            className="min-h-10 shrink-0 px-2 text-base text-indigo-700"
+          >
+            ← Problems
+          </button>
+          <div className="min-w-0 flex-1 overflow-x-auto whitespace-nowrap text-xl text-slate-900">
+            <Latex latex={problem.prompt_latex} />
+          </div>
+          <button
+            type="button"
+            onClick={() => setMode("type")}
+            className="min-h-10 shrink-0 rounded-lg border border-slate-300 px-4 text-base text-slate-600"
+          >
+            Type instead
+          </button>
+        </div>
+
+        <div className="min-h-0 flex-1 px-3 pt-2">
+          <DrawingCanvas
+            strokes={strokes}
+            onStrokesChange={onStrokesChange}
+            disabled={busy}
+          />
+        </div>
+
+        <div className="flex items-center gap-4 px-4 pb-4 pt-2">
+          <p className="flex-1 text-sm text-slate-400">
+            Apple Pencil only — fingers and palms won&apos;t draw.
+          </p>
+          <button
+            type="button"
+            onClick={handleSubmit}
+            disabled={submitDisabled}
+            className="min-h-14 flex-1 rounded-2xl bg-indigo-600 text-xl font-medium text-white disabled:opacity-40"
+          >
+            {busy ? "Reading your work…" : "Check my work"}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex h-full flex-col gap-4">
       <div className="flex items-start justify-between gap-4">
@@ -80,53 +130,43 @@ export default function SolveScreen({
         <Latex latex={problem.prompt_latex} block />
       </div>
 
-      {mode === "draw" ? (
-        <div className="min-h-0 flex-1">
-          <DrawingCanvas
-            strokes={strokes}
-            onStrokesChange={onStrokesChange}
-            disabled={busy}
-          />
-        </div>
-      ) : (
-        <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto">
-          {typedLines.map((line, i) => (
-            <div key={i} className="flex items-center gap-3">
-              <span className="w-8 text-right text-slate-400">{i + 1}</span>
-              <input
-                value={line}
-                onChange={(e) =>
-                  setTypedLines(
-                    typedLines.map((l, j) => (j === i ? e.target.value : l)),
-                  )
-                }
-                placeholder="e.g. 2x + 4 = 10"
-                disabled={busy}
-                className="min-h-12 flex-1 rounded-xl border border-slate-300 px-4 font-mono text-lg"
-              />
-              <button
-                type="button"
-                aria-label={`Remove line ${i + 1}`}
-                onClick={() =>
-                  setTypedLines(typedLines.filter((_, j) => j !== i))
-                }
-                disabled={busy || typedLines.length <= 1}
-                className="min-h-12 min-w-12 rounded-xl border border-slate-300 text-slate-500 disabled:opacity-40"
-              >
-                ✕
-              </button>
-            </div>
-          ))}
-          <button
-            type="button"
-            onClick={() => setTypedLines([...typedLines, ""])}
-            disabled={busy}
-            className="min-h-12 rounded-xl border border-dashed border-slate-300 text-slate-600"
-          >
-            + Add line
-          </button>
-        </div>
-      )}
+      <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto">
+        {typedLines.map((line, i) => (
+          <div key={i} className="flex items-center gap-3">
+            <span className="w-8 text-right text-slate-400">{i + 1}</span>
+            <input
+              value={line}
+              onChange={(e) =>
+                setTypedLines(
+                  typedLines.map((l, j) => (j === i ? e.target.value : l)),
+                )
+              }
+              placeholder="e.g. 2x + 4 = 10"
+              disabled={busy}
+              className="min-h-12 flex-1 rounded-xl border border-slate-300 px-4 font-mono text-lg"
+            />
+            <button
+              type="button"
+              aria-label={`Remove line ${i + 1}`}
+              onClick={() =>
+                setTypedLines(typedLines.filter((_, j) => j !== i))
+              }
+              disabled={busy || typedLines.length <= 1}
+              className="min-h-12 min-w-12 rounded-xl border border-slate-300 text-slate-500 disabled:opacity-40"
+            >
+              ✕
+            </button>
+          </div>
+        ))}
+        <button
+          type="button"
+          onClick={() => setTypedLines([...typedLines, ""])}
+          disabled={busy}
+          className="min-h-12 rounded-xl border border-dashed border-slate-300 text-slate-600"
+        >
+          + Add line
+        </button>
+      </div>
 
       <button
         type="button"

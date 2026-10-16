@@ -18,6 +18,7 @@ export default function DrawingCanvas({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const activeStrokeRef = useRef<Stroke | null>(null);
+  const activePointerIdRef = useRef<number | null>(null);
   const strokesRef = useRef(strokes);
 
   const redraw = useCallback(() => {
@@ -67,12 +68,18 @@ export default function DrawingCanvas({
 
   const handlePointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
     if (disabled || activeStrokeRef.current) return;
+    // Apple Pencil (and mouse on desktop) only — finger and palm touches are
+    // ignored entirely so they never leave stray ink or trigger misclicks.
+    if (e.pointerType === "touch") return;
+    if (e.pointerType === "mouse" && e.button !== 0) return;
     e.currentTarget.setPointerCapture(e.pointerId);
+    activePointerIdRef.current = e.pointerId;
     activeStrokeRef.current = { points: [toPoint(e)] };
     redraw();
   };
 
   const handlePointerMove = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    if (e.pointerId !== activePointerIdRef.current) return;
     const active = activeStrokeRef.current;
     if (!active) return;
     const coalesced =
@@ -90,10 +97,12 @@ export default function DrawingCanvas({
     redraw();
   };
 
-  const finishStroke = () => {
+  const finishStroke = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    if (e.pointerId !== activePointerIdRef.current) return;
     const active = activeStrokeRef.current;
     if (!active) return;
     activeStrokeRef.current = null;
+    activePointerIdRef.current = null;
     if (active.points.length > 0) {
       onStrokesChange([...strokesRef.current, active]);
     }

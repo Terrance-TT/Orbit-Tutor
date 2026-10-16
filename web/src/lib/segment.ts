@@ -62,12 +62,13 @@ export interface LineImage {
   bounds: Bounds;
 }
 
-// Render one line group to a cropped PNG dataURL: white background, padded,
-// 2x scale so Mathpix gets a sharp image.
+// Render one line group to a cropped PNG dataURL: white background, generous
+// padding so ascenders/descenders aren't clipped, 3x scale so Mathpix gets a
+// sharp, high-contrast image.
 export function renderLineImage(
   group: LineGroup,
-  padding = 20,
-  scale = 2,
+  padding = 28,
+  scale = 3,
 ): LineImage {
   const { minX, minY, maxX, maxY } = group.bounds;
   const width = Math.max(maxX - minX + padding * 2, 8);
