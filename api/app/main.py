@@ -10,12 +10,18 @@ Endpoints (the fixed contract the web frontend is built against):
 from __future__ import annotations
 
 import os
+from concurrent.futures import ThreadPoolExecutor
 
+import httpx
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
 from . import checker
-from .mathpix_client import MathpixNotConfiguredError, get_client
+from .mathpix_client import (
+    MathpixNotConfiguredError,
+    MathpixRecognitionError,
+    get_client,
+)
 from .problems import get_problem, load_problems
 from .schemas import (
     CheckRequest,
@@ -65,9 +71,18 @@ def recognize(request: RecognizeRequest) -> dict:
         client = get_client()
     except MathpixNotConfiguredError as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
-    lines: list[dict] = []
-    for image in request.images:
-        lines.extend(client.recognize_detailed(image))
+    try:
+        # Live Mathpix calls are sequential-network-bound; fan them out so a
+        # multi-line submission doesn't take N × the per-line latency.
+        with ThreadPoolExecutor(max_workers=4) as pool:
+            per_image = list(pool.map(client.recognize_detailed, request.images))
+    except MathpixRecognitionError as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
+    except httpx.HTTPError as exc:
+        raise HTTPException(
+            status_code=502, detail=f"Mathpix request failed: {exc}"
+        ) from exc
+    lines = [line for image_lines in per_image for line in image_lines]
     return {"lines": [RecognizedLine(**line).model_dump() for line in lines]}
 
 

@@ -15,6 +15,10 @@ import httpx
 
 MATHPIX_ENDPOINT = "https://api.mathpix.com/v3/text"
 
+
+class MathpixRecognitionError(RuntimeError):
+    """Raised when Mathpix answers but yields no usable recognition."""
+
 # Deterministic canned line sequences so the frontend dev loop works offline.
 # Keys map to problem bank entries: correct -> ts-01, sign_error -> dist-03,
 # distribution_error -> dist-01.
@@ -72,10 +76,8 @@ class LiveMathpixClient:
         payload = {
             "src": image_b64,
             "formats": ["text", "latex_styled"],
-            "data_options": {
-                "include_latex": True,
-                "include_line_data": True,
-            },
+            # Top-level request flag — NOT a data_options key (Mathpix docs).
+            "include_line_data": True,
         }
         response = httpx.post(
             MATHPIX_ENDPOINT,
@@ -84,7 +86,16 @@ class LiveMathpixClient:
             timeout=self._timeout,
         )
         response.raise_for_status()
-        return self._parse_lines(response.json())
+        data = response.json()
+        if data.get("error_info"):
+            raise MathpixRecognitionError(str(data["error_info"]))
+        lines = self._parse_lines(data)
+        if not lines:
+            raise MathpixRecognitionError(
+                "Mathpix returned no readable math for this image "
+                f"(request_id={data.get('request_id', 'unknown')})."
+            )
+        return lines
 
     def recognize(self, image_b64: str) -> list[str]:
         return [entry["latex"] for entry in self.recognize_detailed(image_b64)]
@@ -93,12 +104,16 @@ class LiveMathpixClient:
     def _parse_lines(data: dict) -> list[dict]:
         lines: list[dict] = []
         for entry in data.get("line_data") or []:
-            latex = (entry.get("latex") or "").strip()
+            if entry.get("included") is False:
+                continue  # diagrams / unrecognized regions
+            latex = _clean_latex(entry.get("latex") or entry.get("text") or "")
             if latex:
                 lines.append(
                     {
                         "latex": latex,
-                        "confidence": float(entry.get("confidence", 1.0)),
+                        "confidence": float(
+                            entry.get("confidence", data.get("confidence", 1.0))
+                        ),
                     }
                 )
         if not lines:
@@ -106,11 +121,24 @@ class LiveMathpixClient:
             text = data.get("latex_styled") or data.get("text") or ""
             confidence = float(data.get("confidence", 1.0))
             lines = [
-                {"latex": line.strip(), "confidence": confidence}
+                {"latex": cleaned, "confidence": confidence}
                 for line in text.splitlines()
-                if line.strip()
+                if (cleaned := _clean_latex(line))
             ]
         return lines
+
+
+def _clean_latex(text: str) -> str:
+    """Strip Mathpix's math delimiters (\\(...\\), \\[...\\], $...$) and whitespace."""
+    stripped = text.strip()
+    for prefix, suffix in (("\\(", "\\)"), ("\\[", "\\]"), ("$$", "$$"), ("$", "$")):
+        if (
+            stripped.startswith(prefix)
+            and stripped.endswith(suffix)
+            and len(stripped) > len(prefix) + len(suffix)
+        ):
+            return stripped[len(prefix) : -len(suffix)].strip()
+    return stripped
 
 
 class MathpixNotConfiguredError(RuntimeError):
