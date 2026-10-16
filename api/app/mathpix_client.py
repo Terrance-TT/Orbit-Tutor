@@ -113,13 +113,36 @@ class LiveMathpixClient:
         return lines
 
 
+class MathpixNotConfiguredError(RuntimeError):
+    """Raised when live recognition is required but credentials are missing."""
+
+
 @lru_cache(maxsize=1)
 def get_client() -> MathpixClient:
-    """Live client when explicitly enabled with credentials; mock otherwise."""
-    mock_flag = os.environ.get("MATHPIX_MOCK", "").strip().lower() == "true"
+    """Live client when credentials exist; mock for local dev only.
+
+    MATHPIX_MOCK=false with missing credentials is a misconfiguration, not a
+    mock fallback — silently returning canned lines would masquerade as real
+    (bad) recognition, so fail loudly instead.
+    """
+    mock_env = os.environ.get("MATHPIX_MOCK", "").strip().lower()
     app_id = os.environ.get("MATHPIX_APP_ID")
     app_key = os.environ.get("MATHPIX_APP_KEY")
-    if mock_flag or not (app_id and app_key):
-        scenario = os.environ.get("MATHPIX_MOCK_SCENARIO", DEFAULT_SCENARIO)
-        return MockMathpixClient(scenario)
-    return LiveMathpixClient(app_id, app_key)
+    if app_id and app_key and mock_env != "true":
+        return LiveMathpixClient(app_id, app_key)
+    if mock_env == "false":
+        missing = [
+            name
+            for name, value in (
+                ("MATHPIX_APP_ID", app_id),
+                ("MATHPIX_APP_KEY", app_key),
+            )
+            if not value
+        ]
+        raise MathpixNotConfiguredError(
+            "Mathpix live recognition is enabled (MATHPIX_MOCK=false) but "
+            f"credentials are missing: {', '.join(missing)}. Set them on the "
+            "api service, or set MATHPIX_MOCK=true for demo mode."
+        )
+    scenario = os.environ.get("MATHPIX_MOCK_SCENARIO", DEFAULT_SCENARIO)
+    return MockMathpixClient(scenario)

@@ -15,7 +15,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
 from . import checker
-from .mathpix_client import get_client
+from .mathpix_client import MathpixNotConfiguredError, get_client
 from .problems import get_problem, load_problems
 from .schemas import (
     CheckRequest,
@@ -61,7 +61,10 @@ def problem_detail(problem_id: str) -> dict:
 
 @app.post("/recognize", response_model=RecognizeResponse)
 def recognize(request: RecognizeRequest) -> dict:
-    client = get_client()
+    try:
+        client = get_client()
+    except MathpixNotConfiguredError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
     lines: list[dict] = []
     for image in request.images:
         lines.extend(client.recognize_detailed(image))
