@@ -1,7 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
-import { drawStrokes, INK_COLOR, INK_WIDTH } from "@/lib/ink";
+import { useEffect, useRef, useState } from "react";
+import { INK_COLOR, INK_WIDTH } from "@/lib/ink";
 import type { Stroke, StrokePoint } from "@/lib/types";
 
 interface DrawingCanvasProps {
@@ -10,19 +10,38 @@ interface DrawingCanvasProps {
   disabled?: boolean;
 }
 
+export function pathFromPoints(points: StrokePoint[]): string {
+  if (points.length === 0) return "";
+  const [first, ...rest] = points;
+  let d = `M ${first.x} ${first.y}`;
+  if (rest.length === 0) {
+    // Zero-length line with a round cap renders as a dot.
+    d += ` L ${first.x + 0.01} ${first.y}`;
+  }
+  for (const p of rest) d += ` L ${p.x} ${p.y}`;
+  return d;
+}
+
+const strokeProps = {
+  stroke: INK_COLOR,
+  strokeWidth: INK_WIDTH,
+  fill: "none",
+  strokeLinecap: "round",
+  strokeLinejoin: "round",
+} as const;
+
 export default function DrawingCanvas({
   strokes,
   onStrokesChange,
   disabled = false,
 }: DrawingCanvasProps) {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
+  const svgRef = useRef<SVGSVGElement>(null);
+  const activePathRef = useRef<SVGPathElement>(null);
   const activeStrokeRef = useRef<Stroke | null>(null);
   const strokesRef = useRef(strokes);
   const onStrokesChangeRef = useRef(onStrokesChange);
   const disabledRef = useRef(disabled);
   const rectRef = useRef<DOMRect | null>(null);
-  const drawnPointsRef = useRef(0);
   const debugRef = useRef<HTMLDivElement>(null);
   const [debug] = useState(
     () =>
@@ -31,6 +50,9 @@ export default function DrawingCanvas({
   );
 
   useEffect(() => {
+    strokesRef.current = strokes;
+  }, [strokes]);
+  useEffect(() => {
     onStrokesChangeRef.current = onStrokesChange;
   }, [onStrokesChange]);
   useEffect(() => {
@@ -38,13 +60,12 @@ export default function DrawingCanvas({
   }, [disabled]);
 
   // Debug HUD (?debug=1): raw pointer events as the browser delivers them,
-  // independent of the drawing handlers — used to diagnose stylus behavior
-  // on devices we can't reproduce locally.
+  // independent of the drawing handlers.
   useEffect(() => {
-    const canvas = canvasRef.current;
+    const svg = svgRef.current;
     const hud = debugRef.current;
-    if (!debug || !canvas || !hud) return;
-    const lines: string[] = ["build ink-v5 (native listeners)"];
+    if (!debug || !svg || !hud) return;
+    const lines: string[] = ["build ink-v6 (svg)"];
     const render = () => {
       hud.textContent = lines.slice(0, 7).join("\n");
     };
@@ -77,103 +98,29 @@ export default function DrawingCanvas({
       ["pointercancel", onEvent("cancel")],
     ];
     for (const [type, handler] of handlers) {
-      canvas.addEventListener(type, handler);
+      svg.addEventListener(type, handler);
     }
     return () => {
       for (const [type, handler] of handlers) {
-        canvas.removeEventListener(type, handler);
+        svg.removeEventListener(type, handler);
       }
     };
   }, [debug]);
 
-  // Full redraw: completed strokes plus the in-progress one. Only used when
-  // the stroke list changes or the canvas resizes — never per pointer event.
-  const redraw = useCallback(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-    const dpr = window.devicePixelRatio || 1;
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    ctx.clearRect(0, 0, canvas.width / dpr, canvas.height / dpr);
-    drawStrokes(ctx, strokesRef.current);
-    if (activeStrokeRef.current) {
-      drawStrokes(ctx, [activeStrokeRef.current]);
-    }
-  }, []);
-
-  // Incremental drawing: paint just the new points of the active stroke on
-  // top of the existing bitmap, synchronously in the event handler.
-  const drawPending = useCallback(() => {
-    const canvas = canvasRef.current;
-    const active = activeStrokeRef.current;
-    if (!canvas || !active) return;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-    const dpr = window.devicePixelRatio || 1;
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    ctx.strokeStyle = INK_COLOR;
-    ctx.fillStyle = INK_COLOR;
-    ctx.lineWidth = INK_WIDTH;
-    ctx.lineCap = "round";
-    ctx.lineJoin = "round";
-
-    const pts = active.points;
-    if (pts.length === 1 && drawnPointsRef.current === 0) {
-      ctx.beginPath();
-      ctx.arc(pts[0].x, pts[0].y, INK_WIDTH / 2, 0, Math.PI * 2);
-      ctx.fill();
-      drawnPointsRef.current = 1;
-      return;
-    }
-    const start = Math.max(drawnPointsRef.current - 1, 0);
-    if (pts.length - start < 2) return;
-    ctx.beginPath();
-    ctx.moveTo(pts[start].x, pts[start].y);
-    for (let i = start + 1; i < pts.length; i++) {
-      ctx.lineTo(pts[i].x, pts[i].y);
-    }
-    ctx.stroke();
-    drawnPointsRef.current = pts.length;
-  }, []);
-
-  // Keep the canvas bitmap sized to its container (with DPR) and redraw on
-  // resize. Stroke points are stored in CSS pixels, so resizing never
-  // distorts existing ink.
+  // Input: native DOM listeners on the SVG. The active stroke is a real
+  // <path> element whose `d` is updated synchronously per event — no canvas
+  // bitmap, no compositing step, no React re-render while drawing.
   useEffect(() => {
-    const container = containerRef.current;
-    const canvas = canvasRef.current;
-    if (!container || !canvas) return;
-
-    const syncSize = () => {
-      const rect = container.getBoundingClientRect();
-      const dpr = window.devicePixelRatio || 1;
-      canvas.width = Math.max(Math.round(rect.width * dpr), 1);
-      canvas.height = Math.max(Math.round(rect.height * dpr), 1);
-      redraw();
-    };
-    syncSize();
-    const observer = new ResizeObserver(syncSize);
-    observer.observe(container);
-    return () => observer.disconnect();
-  }, [redraw]);
-
-  useEffect(() => {
-    strokesRef.current = strokes;
-    redraw();
-  }, [strokes, redraw]);
-
-  // Input: plain native DOM listeners on the canvas. No React synthetic
-  // events, no setPointerCapture, no getCoalescedEvents — all three behave
-  // erratically with Apple Pencil on iOS. Drawing happens synchronously in
-  // each handler so ink follows the stylus with zero scheduling delay.
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
+    const svg = svgRef.current;
+    if (!svg) return;
 
     const toPoint = (e: PointerEvent): StrokePoint => {
-      const rect = rectRef.current ?? canvas.getBoundingClientRect();
-      return { x: e.clientX - rect.left, y: e.clientY - rect.top, t: e.timeStamp };
+      const rect = rectRef.current ?? svg.getBoundingClientRect();
+      return {
+        x: e.clientX - rect.left,
+        y: e.clientY - rect.top,
+        t: e.timeStamp,
+      };
     };
 
     const onDown = (e: PointerEvent) => {
@@ -183,10 +130,12 @@ export default function DrawingCanvas({
       if (disabledRef.current || activeStrokeRef.current) return;
       if (e.pointerType === "mouse" && e.button !== 0) return;
       e.preventDefault();
-      rectRef.current = canvas.getBoundingClientRect();
+      rectRef.current = svg.getBoundingClientRect();
       activeStrokeRef.current = { points: [toPoint(e)] };
-      drawnPointsRef.current = 0;
-      drawPending();
+      activePathRef.current?.setAttribute(
+        "d",
+        pathFromPoints(activeStrokeRef.current.points),
+      );
     };
 
     const onMove = (e: PointerEvent) => {
@@ -195,37 +144,36 @@ export default function DrawingCanvas({
       if (!active) return;
       e.preventDefault();
       active.points.push(toPoint(e));
-      drawPending();
+      activePathRef.current?.setAttribute("d", pathFromPoints(active.points));
     };
 
     const onUp = (e: PointerEvent) => {
       if (e.pointerType === "touch") return;
       const active = activeStrokeRef.current;
       if (!active) return;
-      drawPending(); // flush any points not yet painted
       activeStrokeRef.current = null;
-      drawnPointsRef.current = 0;
+      activePathRef.current?.setAttribute("d", "");
       if (active.points.length > 0) {
         onStrokesChangeRef.current([...strokesRef.current, active]);
       }
     };
 
-    canvas.addEventListener("pointerdown", onDown, { passive: false });
-    canvas.addEventListener("pointermove", onMove, { passive: false });
-    canvas.addEventListener("pointerup", onUp);
-    canvas.addEventListener("pointercancel", onUp);
-    // Also catch releases outside the canvas (no pointer capture is used).
+    svg.addEventListener("pointerdown", onDown, { passive: false });
+    svg.addEventListener("pointermove", onMove, { passive: false });
+    svg.addEventListener("pointerup", onUp);
+    svg.addEventListener("pointercancel", onUp);
+    // Also catch releases outside the drawing surface (no pointer capture).
     window.addEventListener("pointerup", onUp);
     window.addEventListener("pointercancel", onUp);
     return () => {
-      canvas.removeEventListener("pointerdown", onDown);
-      canvas.removeEventListener("pointermove", onMove);
-      canvas.removeEventListener("pointerup", onUp);
-      canvas.removeEventListener("pointercancel", onUp);
+      svg.removeEventListener("pointerdown", onDown);
+      svg.removeEventListener("pointermove", onMove);
+      svg.removeEventListener("pointerup", onUp);
+      svg.removeEventListener("pointercancel", onUp);
       window.removeEventListener("pointerup", onUp);
       window.removeEventListener("pointercancel", onUp);
     };
-  }, [drawPending]);
+  }, []);
 
   return (
     <div className="flex h-full flex-col gap-3">
@@ -247,16 +195,18 @@ export default function DrawingCanvas({
           Clear
         </button>
       </div>
-      <div
-        ref={containerRef}
-        className="relative min-h-0 flex-1 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-inner"
-      >
-        <canvas
-          ref={canvasRef}
+      <div className="relative min-h-0 flex-1 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-inner">
+        <svg
+          ref={svgRef}
           className="absolute inset-0 h-full w-full touch-none select-none"
           style={{ touchAction: "none", WebkitTouchCallout: "none" }}
           onContextMenu={(e) => e.preventDefault()}
-        />
+        >
+          {strokes.map((stroke, i) => (
+            <path key={i} d={pathFromPoints(stroke.points)} {...strokeProps} />
+          ))}
+          <path ref={activePathRef} d="" {...strokeProps} />
+        </svg>
         {debug && (
           <div
             ref={debugRef}
