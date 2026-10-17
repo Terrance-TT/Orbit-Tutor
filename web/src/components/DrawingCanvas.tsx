@@ -38,6 +38,7 @@ export default function DrawingCanvas({
   const svgRef = useRef<SVGSVGElement>(null);
   const activePathRef = useRef<SVGPathElement>(null);
   const activeStrokeRef = useRef<Stroke | null>(null);
+  const activePointerIdRef = useRef<number | null>(null);
   const strokesRef = useRef(strokes);
   const onStrokesChangeRef = useRef(onStrokesChange);
   const disabledRef = useRef(disabled);
@@ -65,7 +66,7 @@ export default function DrawingCanvas({
     const svg = svgRef.current;
     const hud = debugRef.current;
     if (!debug || !svg || !hud) return;
-    const lines: string[] = ["build ink-v6 (svg)"];
+    const lines: string[] = ["build ink-v7 (svg, id-aware)"];
     const render = () => {
       hud.textContent = lines.slice(0, 7).join("\n");
     };
@@ -110,6 +111,11 @@ export default function DrawingCanvas({
   // Input: native DOM listeners on the SVG. The active stroke is a real
   // <path> element whose `d` is updated synchronously per event — no canvas
   // bitmap, no compositing step, no React re-render while drawing.
+  //
+  // Stroke lifecycle is pointerId-aware: iOS can deliver the previous
+  // stroke's pointerup AFTER the next stroke's pointerdown. A down with a
+  // new id therefore finalizes the stale stroke first; a late up/move from
+  // an old id is ignored. Without this, quick successive strokes get dropped.
   useEffect(() => {
     const svg = svgRef.current;
     if (!svg) return;
@@ -123,14 +129,32 @@ export default function DrawingCanvas({
       };
     };
 
+    const finishActive = () => {
+      const active = activeStrokeRef.current;
+      if (!active) return;
+      activeStrokeRef.current = null;
+      activePointerIdRef.current = null;
+      activePathRef.current?.setAttribute("d", "");
+      if (active.points.length > 0) {
+        // Update the ref synchronously so two strokes committed in quick
+        // succession can't overwrite each other via a stale base array.
+        const next = [...strokesRef.current, active];
+        strokesRef.current = next;
+        onStrokesChangeRef.current(next);
+      }
+    };
+
     const onDown = (e: PointerEvent) => {
       // Apple Pencil (and mouse on desktop) only — finger and palm touches
       // are ignored so they never leave stray ink or trigger misclicks.
       if (e.pointerType === "touch") return;
-      if (disabledRef.current || activeStrokeRef.current) return;
       if (e.pointerType === "mouse" && e.button !== 0) return;
+      if (activePointerIdRef.current === e.pointerId) return;
       e.preventDefault();
+      if (disabledRef.current) return;
+      if (activeStrokeRef.current) finishActive(); // stale previous stroke
       rectRef.current = svg.getBoundingClientRect();
+      activePointerIdRef.current = e.pointerId;
       activeStrokeRef.current = { points: [toPoint(e)] };
       activePathRef.current?.setAttribute(
         "d",
@@ -140,6 +164,7 @@ export default function DrawingCanvas({
 
     const onMove = (e: PointerEvent) => {
       if (e.pointerType === "touch") return;
+      if (e.pointerId !== activePointerIdRef.current) return;
       const active = activeStrokeRef.current;
       if (!active) return;
       e.preventDefault();
@@ -149,13 +174,8 @@ export default function DrawingCanvas({
 
     const onUp = (e: PointerEvent) => {
       if (e.pointerType === "touch") return;
-      const active = activeStrokeRef.current;
-      if (!active) return;
-      activeStrokeRef.current = null;
-      activePathRef.current?.setAttribute("d", "");
-      if (active.points.length > 0) {
-        onStrokesChangeRef.current([...strokesRef.current, active]);
-      }
+      if (e.pointerId !== activePointerIdRef.current) return;
+      finishActive();
     };
 
     svg.addEventListener("pointerdown", onDown, { passive: false });
