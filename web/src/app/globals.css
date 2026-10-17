@@ -16,6 +16,9 @@
 html,
 body {
   overscroll-behavior: none;
+  /* Disable double-tap zoom globally so a rapid second Pencil contact is
+     delivered to the app instead of being consumed as a zoom gesture. */
+  touch-action: manipulation;
 }
 
 body {

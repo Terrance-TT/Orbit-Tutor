@@ -66,7 +66,7 @@ export default function DrawingCanvas({
     const svg = svgRef.current;
     const hud = debugRef.current;
     if (!debug || !svg || !hud) return;
-    const lines: string[] = ["build ink-v7 (svg, id-aware)"];
+    const lines: string[] = ["build ink-v8 (contact-driven)"];
     const render = () => {
       hud.textContent = lines.slice(0, 7).join("\n");
     };
@@ -112,10 +112,11 @@ export default function DrawingCanvas({
   // <path> element whose `d` is updated synchronously per event — no canvas
   // bitmap, no compositing step, no React re-render while drawing.
   //
-  // Stroke lifecycle is pointerId-aware: iOS can deliver the previous
-  // stroke's pointerup AFTER the next stroke's pointerdown. A down with a
-  // new id therefore finalizes the stale stroke first; a late up/move from
-  // an old id is ignored. Without this, quick successive strokes get dropped.
+  // Stroke lifecycle is pointerId-aware AND does not require pointerdown:
+  // WebKit can swallow the first event of a rapid follow-up stroke (gesture
+  // recognition), so any movement with pen contact starts a stroke too.
+  // A new contact id finalizes the stale stroke; late events from an old id
+  // are ignored.
   useEffect(() => {
     const svg = svgRef.current;
     if (!svg) return;
@@ -144,14 +145,7 @@ export default function DrawingCanvas({
       }
     };
 
-    const onDown = (e: PointerEvent) => {
-      // Apple Pencil (and mouse on desktop) only — finger and palm touches
-      // are ignored so they never leave stray ink or trigger misclicks.
-      if (e.pointerType === "touch") return;
-      if (e.pointerType === "mouse" && e.button !== 0) return;
-      if (activePointerIdRef.current === e.pointerId) return;
-      e.preventDefault();
-      if (disabledRef.current) return;
+    const startStroke = (e: PointerEvent) => {
       if (activeStrokeRef.current) finishActive(); // stale previous stroke
       rectRef.current = svg.getBoundingClientRect();
       activePointerIdRef.current = e.pointerId;
@@ -162,12 +156,29 @@ export default function DrawingCanvas({
       );
     };
 
+    const onDown = (e: PointerEvent) => {
+      // Apple Pencil (and mouse on desktop) only — finger and palm touches
+      // are ignored so they never leave stray ink or trigger misclicks.
+      if (e.pointerType === "touch") return;
+      if (e.pointerType === "mouse" && e.button !== 0) return;
+      if (activePointerIdRef.current === e.pointerId) return;
+      e.preventDefault();
+      if (disabledRef.current) return;
+      startStroke(e);
+    };
+
     const onMove = (e: PointerEvent) => {
       if (e.pointerType === "touch") return;
-      if (e.pointerId !== activePointerIdRef.current) return;
+      const contact = e.buttons !== 0 || e.pressure > 0;
+      if (!contact) return; // hover — not ink
+      e.preventDefault();
+      if (disabledRef.current) return;
+      if (activePointerIdRef.current !== e.pointerId) {
+        startStroke(e); // pointerdown may have been swallowed — start anyway
+        return;
+      }
       const active = activeStrokeRef.current;
       if (!active) return;
-      e.preventDefault();
       active.points.push(toPoint(e));
       activePathRef.current?.setAttribute("d", pathFromPoints(active.points));
     };
@@ -178,10 +189,18 @@ export default function DrawingCanvas({
       finishActive();
     };
 
+    const stop = (e: Event) => e.preventDefault();
+
     svg.addEventListener("pointerdown", onDown, { passive: false });
     svg.addEventListener("pointermove", onMove, { passive: false });
     svg.addEventListener("pointerup", onUp);
     svg.addEventListener("pointercancel", onUp);
+    // Suppress gestures that can consume a rapid second contact entirely.
+    svg.addEventListener("touchstart", stop, { passive: false });
+    svg.addEventListener("touchmove", stop, { passive: false });
+    svg.addEventListener("touchend", stop, { passive: false });
+    svg.addEventListener("dblclick", stop);
+    svg.addEventListener("gesturestart", stop);
     // Also catch releases outside the drawing surface (no pointer capture).
     window.addEventListener("pointerup", onUp);
     window.addEventListener("pointercancel", onUp);
@@ -190,6 +209,11 @@ export default function DrawingCanvas({
       svg.removeEventListener("pointermove", onMove);
       svg.removeEventListener("pointerup", onUp);
       svg.removeEventListener("pointercancel", onUp);
+      svg.removeEventListener("touchstart", stop);
+      svg.removeEventListener("touchmove", stop);
+      svg.removeEventListener("touchend", stop);
+      svg.removeEventListener("dblclick", stop);
+      svg.removeEventListener("gesturestart", stop);
       window.removeEventListener("pointerup", onUp);
       window.removeEventListener("pointercancel", onUp);
     };
