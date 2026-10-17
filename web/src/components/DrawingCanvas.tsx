@@ -19,6 +19,8 @@ export default function DrawingCanvas({
   const containerRef = useRef<HTMLDivElement>(null);
   const activeStrokeRef = useRef<Stroke | null>(null);
   const strokesRef = useRef(strokes);
+  const onStrokesChangeRef = useRef(onStrokesChange);
+  const disabledRef = useRef(disabled);
   const rectRef = useRef<DOMRect | null>(null);
   const drawnPointsRef = useRef(0);
   const debugRef = useRef<HTMLDivElement>(null);
@@ -28,6 +30,13 @@ export default function DrawingCanvas({
       new URLSearchParams(window.location.search).has("debug"),
   );
 
+  useEffect(() => {
+    onStrokesChangeRef.current = onStrokesChange;
+  }, [onStrokesChange]);
+  useEffect(() => {
+    disabledRef.current = disabled;
+  }, [disabled]);
+
   // Debug HUD (?debug=1): raw pointer events as the browser delivers them,
   // independent of the drawing handlers — used to diagnose stylus behavior
   // on devices we can't reproduce locally.
@@ -35,7 +44,7 @@ export default function DrawingCanvas({
     const canvas = canvasRef.current;
     const hud = debugRef.current;
     if (!debug || !canvas || !hud) return;
-    const lines: string[] = ["build ink-v4"];
+    const lines: string[] = ["build ink-v5 (native listeners)"];
     const render = () => {
       hud.textContent = lines.slice(0, 7).join("\n");
     };
@@ -94,9 +103,7 @@ export default function DrawingCanvas({
   }, []);
 
   // Incremental drawing: paint just the new points of the active stroke on
-  // top of the existing bitmap. Called synchronously from pointer events —
-  // iPad Safari suspends requestAnimationFrame during an active Pencil
-  // contact, so scheduling frames instead would delay ink until pointerup.
+  // top of the existing bitmap, synchronously in the event handler.
   const drawPending = useCallback(() => {
     const canvas = canvasRef.current;
     const active = activeStrokeRef.current;
@@ -156,54 +163,69 @@ export default function DrawingCanvas({
     redraw();
   }, [strokes, redraw]);
 
-  const toPoint = (clientX: number, clientY: number, t: number): StrokePoint => {
-    const rect =
-      rectRef.current ?? canvasRef.current!.getBoundingClientRect();
-    return { x: clientX - rect.left, y: clientY - rect.top, t };
-  };
+  // Input: plain native DOM listeners on the canvas. No React synthetic
+  // events, no setPointerCapture, no getCoalescedEvents — all three behave
+  // erratically with Apple Pencil on iOS. Drawing happens synchronously in
+  // each handler so ink follows the stylus with zero scheduling delay.
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
 
-  const handlePointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
-    if (disabled || activeStrokeRef.current) return;
-    // Apple Pencil (and mouse on desktop) only — finger and palm touches are
-    // ignored entirely so they never leave stray ink or trigger misclicks.
-    if (e.pointerType === "touch") return;
-    if (e.pointerType === "mouse" && e.button !== 0) return;
-    rectRef.current = canvasRef.current!.getBoundingClientRect();
-    e.currentTarget.setPointerCapture(e.pointerId);
-    activeStrokeRef.current = {
-      points: [toPoint(e.clientX, e.clientY, e.timeStamp)],
+    const toPoint = (e: PointerEvent): StrokePoint => {
+      const rect = rectRef.current ?? canvas.getBoundingClientRect();
+      return { x: e.clientX - rect.left, y: e.clientY - rect.top, t: e.timeStamp };
     };
-    drawnPointsRef.current = 0;
-    drawPending();
-  };
 
-  const handlePointerMove = (e: React.PointerEvent<HTMLCanvasElement>) => {
-    // No pointerId matching: some browsers don't keep the id stable across
-    // a stylus's event sequence. Only touch is filtered out.
-    if (e.pointerType === "touch") return;
-    const active = activeStrokeRef.current;
-    if (!active) return;
-    const coalesced =
-      typeof e.nativeEvent.getCoalescedEvents === "function"
-        ? e.nativeEvent.getCoalescedEvents()
-        : [e.nativeEvent];
-    for (const ev of coalesced) {
-      active.points.push(toPoint(ev.clientX, ev.clientY, ev.timeStamp));
-    }
-    drawPending();
-  };
+    const onDown = (e: PointerEvent) => {
+      // Apple Pencil (and mouse on desktop) only — finger and palm touches
+      // are ignored so they never leave stray ink or trigger misclicks.
+      if (e.pointerType === "touch") return;
+      if (disabledRef.current || activeStrokeRef.current) return;
+      if (e.pointerType === "mouse" && e.button !== 0) return;
+      e.preventDefault();
+      rectRef.current = canvas.getBoundingClientRect();
+      activeStrokeRef.current = { points: [toPoint(e)] };
+      drawnPointsRef.current = 0;
+      drawPending();
+    };
 
-  const finishStroke = (e: React.PointerEvent<HTMLCanvasElement>) => {
-    if (e.pointerType === "touch") return;
-    const active = activeStrokeRef.current;
-    if (!active) return;
-    drawPending(); // flush any points not yet painted
-    activeStrokeRef.current = null;
-    drawnPointsRef.current = 0;
-    if (active.points.length > 0) {
-      onStrokesChange([...strokesRef.current, active]);
-    }
-  };
+    const onMove = (e: PointerEvent) => {
+      if (e.pointerType === "touch") return;
+      const active = activeStrokeRef.current;
+      if (!active) return;
+      e.preventDefault();
+      active.points.push(toPoint(e));
+      drawPending();
+    };
+
+    const onUp = (e: PointerEvent) => {
+      if (e.pointerType === "touch") return;
+      const active = activeStrokeRef.current;
+      if (!active) return;
+      drawPending(); // flush any points not yet painted
+      activeStrokeRef.current = null;
+      drawnPointsRef.current = 0;
+      if (active.points.length > 0) {
+        onStrokesChangeRef.current([...strokesRef.current, active]);
+      }
+    };
+
+    canvas.addEventListener("pointerdown", onDown, { passive: false });
+    canvas.addEventListener("pointermove", onMove, { passive: false });
+    canvas.addEventListener("pointerup", onUp);
+    canvas.addEventListener("pointercancel", onUp);
+    // Also catch releases outside the canvas (no pointer capture is used).
+    window.addEventListener("pointerup", onUp);
+    window.addEventListener("pointercancel", onUp);
+    return () => {
+      canvas.removeEventListener("pointerdown", onDown);
+      canvas.removeEventListener("pointermove", onMove);
+      canvas.removeEventListener("pointerup", onUp);
+      canvas.removeEventListener("pointercancel", onUp);
+      window.removeEventListener("pointerup", onUp);
+      window.removeEventListener("pointercancel", onUp);
+    };
+  }, [drawPending]);
 
   return (
     <div className="flex h-full flex-col gap-3">
@@ -233,10 +255,6 @@ export default function DrawingCanvas({
           ref={canvasRef}
           className="absolute inset-0 h-full w-full touch-none select-none"
           style={{ touchAction: "none", WebkitTouchCallout: "none" }}
-          onPointerDown={handlePointerDown}
-          onPointerMove={handlePointerMove}
-          onPointerUp={finishStroke}
-          onPointerCancel={finishStroke}
           onContextMenu={(e) => e.preventDefault()}
         />
         {debug && (
