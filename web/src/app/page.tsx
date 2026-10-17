@@ -269,6 +269,7 @@ export default function Home() {
 
         {screen === "result" && checkResult && (
           <ResultScreen
+            problemId={problem?.id ?? null}
             lines={confirmedLatex}
             result={checkResult}
             onNextProblem={goToPicker}

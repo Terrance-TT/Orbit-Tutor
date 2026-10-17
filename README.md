@@ -45,6 +45,11 @@ locally):
 - `MATHPIX_MOCK_SCENARIO=correct|sign_error|distribution_error` — pick which
   canned line sequence the mock returns.
 - `MATHPIX_APP_ID` / `MATHPIX_APP_KEY` — live Mathpix credentials.
+- `TUTOR_MOCK=true` (default when no tutor key is present) — deterministic mock
+  diagnosis for local dev.
+- `TUTOR_API_KEY` — Moonshot/Kimi key for live tutor diagnoses.
+- `TUTOR_BASE_URL` / `TUTOR_MODEL` — optional overrides (defaults
+  `https://api.moonshot.ai/v1` and `kimi-k2-0905-preview`).
 - `WEB_ORIGIN=http://localhost:3000` — CORS origin for the frontend.
 
 ### Web (`web/`)
@@ -61,12 +66,14 @@ Deploy as **two services** from this one repo. Each service ships a
 2. **web** — root directory `web/` (`web/Dockerfile`; `npm run build` then
    `npm run start` on `$PORT`).
 
-Mathpix credentials are managed via the **Railway secrets manager** on the `api`
-service — never commit them:
+Mathpix and tutor credentials are managed via the **Railway secrets manager** on
+the `api` service — never commit them:
 
 - `MATHPIX_APP_ID`
 - `MATHPIX_APP_KEY`
 - `MATHPIX_MOCK=false` (required in production so the live client is used)
+- `TUTOR_API_KEY`
+- `TUTOR_MOCK=false` (required in production for live diagnoses)
 
 Also set:
 

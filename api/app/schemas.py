@@ -43,3 +43,16 @@ class CheckResponse(BaseModel):
     divergent_line_index: int | None
     final_answer_correct: bool
     parsed_lines: list[ParsedLine]
+
+
+class DiagnoseRequest(BaseModel):
+    problem_id: str
+    lines: list[str]  # confirmed per-line LaTeX
+    divergent_line_index: int | None = None  # recomputed when omitted
+
+
+class DiagnoseResponse(BaseModel):
+    error_type: str
+    summary: str
+    explanation: str
+    fix_hint: str

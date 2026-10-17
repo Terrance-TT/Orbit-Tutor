@@ -12,7 +12,7 @@ Orbit is an AI math tutor that locates the exact step where a student's reasonin
 2. Each handwritten line is recognized as LaTeX via **Mathpix**.
 3. The student **confirms the recognized reading** (diagnosis never proceeds on an unconfirmed reading).
 4. A **SymPy checker** validates every line-to-line transition symbolically and reports the **first divergent line**.
-5. (Not built yet) The tutor explains the misconception in the student's preferred style, the student resumes from the last correct line, and a follow-up problem confirms the fix.
+5. The tutor diagnoses the misconception at that line and gives a short explanation (built; live LLM output requires `TUTOR_API_KEY`). Still not built: resume-from-last-correct-line and a follow-up verification problem.
 
 Design principles: silent by default (no mid-work interruption), symbolic checking only (never string matching), any mathematically valid solution route is accepted.
 
@@ -26,10 +26,11 @@ Deployed and working end-to-end:
 - Full-screen Pencil-only writing with instant ink, rapid successive strokes work, palm/finger rejection.
 - Live Mathpix recognition with per-line reading confirmation (edit + confirm-all; low-confidence badges).
 - Symbolic checking with divergent-line highlighting in the student's own work; quiet success state on correct answers.
+- **Tutor diagnosis at the divergent line:** misconception classification (`arithmetic_slip`, `sign_error`, `distribution_error`, `concept_misconception`, `misread_problem`, `other`), summary, micro-explanation, and fix hint. Uses Kimi/Moonshot; deterministic mock tutor for local dev. Production needs `TUTOR_API_KEY`.
 - "Type instead" mode (enter LaTeX lines without handwriting; still passes through confirmation).
 - `/ink-test` diagnostic page and `?debug=1` pointer-event HUD for device debugging.
 
-**Not built yet:** tutor explanations at the divergent line (there is a "coming soon" stub), misconception classification, learner model/memory, follow-up verification problems, hesitation/stroke analytics, voice, accounts/database.
+**Not built yet:** resume-from-last-correct-line flow, follow-up verification problems, learner model/memory, explanation-style personalization, hesitation/stroke analytics, voice, accounts/database.
 
 ## 3. Repository & stack
 
@@ -40,13 +41,14 @@ GitHub remote (private): https://github.com/Terrance-TT/Orbit-Tutor — `main` t
 Orbit/
 ├── api/                  # FastAPI + SymPy backend (Python 3.12)
 │   ├── app/
-│   │   ├── main.py           # Endpoints + CORS + recognition fan-out
+│   │   ├── main.py           # Endpoints + CORS + recognition/diagnosis
 │   │   ├── checker.py        # Symbolic transition checker (the core)
 │   │   ├── mathpix_client.py # Live + mock Mathpix clients
+│   │   ├── tutor.py          # Kimi/Moonshot diagnosis client + prompt/parser + mock
 │   │   ├── problems.py       # Problem bank loader
 │   │   └── schemas.py        # Pydantic API models
 │   ├── problems/         # 5 JSON files, 19 problems total
-│   ├── tests/            # pytest: 12 tests incl. solution fixtures
+│   ├── tests/            # pytest: 19 tests incl. checker fixtures + tutor tests
 │   ├── requirements.txt
 │   └── Dockerfile
 ├── web/                  # Next.js 16.4 (App Router, Turbopack) + React 19 + TS + Tailwind v4
@@ -83,13 +85,13 @@ Other dependencies: `katex`, `signature_pad` (only used by `/ink-test`), `playwr
 **Local dev:**
 ```bash
 cd api && python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
-MATHPIX_MOCK=true .venv/bin/python -m uvicorn app.main:app --port 8000   # mock OCR, no keys needed
+MATHPIX_MOCK=true TUTOR_MOCK=true .venv/bin/python -m uvicorn app.main:app --port 8000   # mock OCR + tutor, no keys needed
 cd web && npm install && npm run dev                                      # http://localhost:3000
 ```
 
 **Checks before committing:**
 ```bash
-cd api && .venv/bin/python -m pytest tests/ -q     # expect 12 passed
+cd api && .venv/bin/python -m pytest tests/ -q     # expect 19 passed
 cd web && npm run lint && npm run build            # expect clean
 ```
 
@@ -104,9 +106,10 @@ Deploying from the repo root uploads the whole monorepo and Railpack fails — a
 **Railway project:** https://railway.com/project/f4ae078c-d1f3-49bc-9a6a-08f556b1a003 (project `orbit`, services `api` + `web`, each with a Dockerfile detected at its upload root).
 
 **Environment variables:**
-- `api`: `MATHPIX_APP_ID`, `MATHPIX_APP_KEY` (set via Railway secrets), `MATHPIX_MOCK=false`, `WEB_ORIGIN=https://web-production-b030b.up.railway.app`.
+- `api`: `MATHPIX_APP_ID`, `MATHPIX_APP_KEY`, `TUTOR_API_KEY` (all via Railway secrets), `MATHPIX_MOCK=false`, `TUTOR_MOCK=false`, `WEB_ORIGIN=https://web-production-b030b.up.railway.app`.
+- Optional tutor overrides: `TUTOR_BASE_URL` (default `https://api.moonshot.ai/v1`) and `TUTOR_MODEL` (default `kimi-k2-0905-preview`). If Moonshot rejects the default model ID, set `TUTOR_MODEL` to a model enabled on the account.
 - `web`: `NEXT_PUBLIC_API_URL=https://api-production-ea51.up.railway.app` — **build-time** (inlined into the bundle); changing it requires a rebuild/redeploy.
-- Local mock mode: `MATHPIX_MOCK=true`, optional `MATHPIX_MOCK_SCENARIO=correct|sign_error|distribution_error`.
+- Local mock mode: `MATHPIX_MOCK=true`, `TUTOR_MOCK=true`; optional `MATHPIX_MOCK_SCENARIO=correct|sign_error|distribution_error`.
 
 ## 5. Backend behavior that matters
 
@@ -115,6 +118,7 @@ Deploying from the repo root uploads the whole monorepo and Railpack fails — a
 - `GET /problems/{id}` → same + `answer_latex`
 - `POST /recognize` — body `{images: [dataURL,...]}` → `{lines: [{latex, confidence}]}`
 - `POST /check` — body `{problem_id, lines: [latex,...]}` → `{correct, divergent_line_index, final_answer_correct, parsed_lines: [{raw, parsed, status}]}`
+- `POST /diagnose` — body `{problem_id, lines: [latex,...], divergent_line_index?}` → `{error_type, summary, explanation, fix_hint}`. If the index is omitted, the server recomputes it with the checker; correct/no-divergence work returns 400.
 
 **Checker (`checker.py`):**
 - LaTeX parsed with `sympy.parsing.latex.parse_latex` (antlr). Parsing is isolated behind `parse_line()` so the engine can be swapped.
@@ -127,6 +131,10 @@ Deploying from the repo root uploads the whole monorepo and Railpack fails — a
 - Response: prefer `line_data[]` entries (skip `included: false`), take `latex` or `text`, strip `\(...\)` / `$...$` delimiters; fall back to whole-result `latex_styled`/`text` split by newlines.
 - Errors: missing credentials with `MATHPIX_MOCK=false` → **503 naming the missing variable** (never silently mock in prod — that once looked like "awful recognition"); Mathpix `error_info` or empty result → 502. Per-image calls fan out via `ThreadPoolExecutor(max_workers=4)`.
 - Mock client returns canned lines for local dev only.
+
+**Tutor (`tutor.py`):**
+- The checker finds the divergent line deterministically; the LLM only classifies and explains it. Prompt includes the problem, known answer, and numbered student lines with `FIRST WRONG LINE` marked. Response must be JSON with `error_type`, `summary`, `explanation`, `fix_hint`; fenced/prose-wrapped JSON is tolerated and unknown error types map to `other`.
+- Uses Moonshot/Kimi's OpenAI-compatible `POST {TUTOR_BASE_URL}/chat/completions` with bearer `TUTOR_API_KEY`. `TUTOR_MOCK=false` with no key → 503 (never silently mock in prod); upstream/parse failures → 502. `MockTutorClient` is for local dev only.
 
 **Problem bank:** each JSON file is a list of `{id, title, prompt_latex, answer_latex, skills}`. No scripted solution paths — valid routes emerge from symbolic checking. Add problems by adding entries; IDs must be unique.
 
@@ -151,9 +159,9 @@ Deploying from the repo root uploads the whole monorepo and Railpack fails — a
 
 ## 8. What to build next (in priority order)
 
-1. **Tutor explanation + misconception classification at the divergent line** (the product's core value; currently a stub). Needs an LLM provider decision; classify slip vs. sign error vs. concept misconception vs. misread; explanation style escalation.
-2. **Follow-up verification problem** after a fix + resume-from-last-correct-line flow.
-3. **Expand math coverage** as a family of checkers behind one interface: next easiest = quadratics, systems of equations, expression simplification (equivalence rather than solution-set mode), each with pytest fixtures. Trig/calculus later (LaTeX parsing gets fragile). Word problems/geometry/proofs need an LLM-based checker, not SymPy.
+1. **Follow-up verification problem** after a fix + resume-from-last-correct-line flow (the diagnosis itself is now built).
+2. **Explanation-style escalation and self-correction first** — where appropriate, tell the student an error exists between lines N–M before showing the full diagnosis; if one explanation style doesn't land, try another (visual, numeric example, analogy).
+3. **Expand math coverage** as a family of checkers behind one interface: next easiest = quadratics, systems of equations, expression simplification (equivalence rather than solution-set mode), each with pytest fixtures and domain-specific tutor prompts. Trig/calculus later (LaTeX parsing gets fragile). Word problems/geometry/proofs need an LLM-based checker, not SymPy.
 4. **Learner model** (misconception log, explanation-style preferences) — needs a database (none yet; all state is client-side + localStorage).
 
 Original spec sections still worth honoring: privacy/COPPA stance (no camera ever, data export/delete, no ads), silence-by-default, self-correction before explanation.

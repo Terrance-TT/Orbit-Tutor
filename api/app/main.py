@@ -5,6 +5,7 @@ Endpoints (the fixed contract the web frontend is built against):
   GET  /problems/{id}  -> ProblemDetail
   POST /recognize      -> per-line LaTeX via the Mathpix client (mock by default)
   POST /check          -> symbolic verdict + divergent line via the checker
+  POST /diagnose       -> tutor misconception diagnosis at the divergent line
 """
 
 from __future__ import annotations
@@ -26,12 +27,15 @@ from .problems import get_problem, load_problems
 from .schemas import (
     CheckRequest,
     CheckResponse,
+    DiagnoseRequest,
+    DiagnoseResponse,
     ProblemDetail,
     ProblemSummary,
     RecognizeRequest,
     RecognizeResponse,
     RecognizedLine,
 )
+from .tutor import TutorError, TutorNotConfiguredError, get_tutor_client
 
 app = FastAPI(title="Orbit API", version="0.1.0")
 
@@ -94,3 +98,39 @@ def check_work(request: CheckRequest) -> dict:
             status_code=404, detail=f"unknown problem {request.problem_id!r}"
         )
     return checker.check(problem, request.lines)
+
+
+@app.post("/diagnose", response_model=DiagnoseResponse)
+def diagnose(request: DiagnoseRequest) -> dict:
+    problem = get_problem(request.problem_id)
+    if problem is None:
+        raise HTTPException(
+            status_code=404, detail=f"unknown problem {request.problem_id!r}"
+        )
+
+    divergent_line_index = request.divergent_line_index
+    if divergent_line_index is None:
+        divergent_line_index = checker.check(problem, request.lines)[
+            "divergent_line_index"
+        ]
+    if divergent_line_index is None:
+        raise HTTPException(
+            status_code=400, detail="no divergent line to diagnose"
+        )
+    if not 0 <= divergent_line_index < len(request.lines):
+        raise HTTPException(
+            status_code=400, detail="divergent_line_index is out of range"
+        )
+
+    try:
+        client = get_tutor_client()
+    except TutorNotConfiguredError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    try:
+        return client.diagnose(problem, request.lines, divergent_line_index)
+    except TutorError as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
+    except httpx.HTTPError as exc:
+        raise HTTPException(
+            status_code=502, detail=f"tutor request failed: {exc}"
+        ) from exc

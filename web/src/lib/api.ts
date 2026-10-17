@@ -1,5 +1,6 @@
 import type {
   CheckResponse,
+  DiagnoseResponse,
   ProblemDetail,
   ProblemSummary,
   RecognizeResponse,
@@ -64,5 +65,20 @@ export function checkWork(
   return request<CheckResponse>("/check", {
     method: "POST",
     body: JSON.stringify({ problem_id: problemId, lines }),
+  });
+}
+
+export function diagnose(
+  problemId: string,
+  lines: string[],
+  divergentLineIndex: number,
+): Promise<DiagnoseResponse> {
+  return request<DiagnoseResponse>("/diagnose", {
+    method: "POST",
+    body: JSON.stringify({
+      problem_id: problemId,
+      lines,
+      divergent_line_index: divergentLineIndex,
+    }),
   });
 }

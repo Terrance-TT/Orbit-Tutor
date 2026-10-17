@@ -1,21 +1,79 @@
 "use client";
 
-import type { CheckResponse } from "@/lib/types";
+import { useCallback, useEffect, useState } from "react";
+import { ApiError, diagnose } from "@/lib/api";
+import type { CheckResponse, DiagnoseResponse } from "@/lib/types";
 import Latex from "./Latex";
 
 interface ResultScreenProps {
+  problemId: string | null;
   lines: string[];
   result: CheckResponse;
   onNextProblem: () => void;
   onTryAgain: () => void;
 }
 
+interface DiagnosisState {
+  loading: boolean;
+  error: string | null;
+}
+
+// Render plain tutor text with inline $...$ math passed through KaTeX.
+function TutorText({ text }: { text: string }) {
+  const parts = text.split(/(\$[^$]+\$)/g).filter(Boolean);
+  return (
+    <>
+      {parts.map((part, i) =>
+        part.length > 1 && part.startsWith("$") && part.endsWith("$") ? (
+          <Latex key={i} latex={part.slice(1, -1)} />
+        ) : (
+          <span key={i}>{part}</span>
+        ),
+      )}
+    </>
+  );
+}
+
 export default function ResultScreen({
+  problemId,
   lines,
   result,
   onNextProblem,
   onTryAgain,
 }: ResultScreenProps) {
+  const divergent = result.divergent_line_index;
+  const [diagnosis, setDiagnosis] = useState<DiagnoseResponse | null>(null);
+  const [diagnosisState, setDiagnosisState] = useState<DiagnosisState>({
+    loading: false,
+    error: null,
+  });
+
+  const loadDiagnosis = useCallback(async () => {
+    if (result.correct || !problemId || divergent === null) return;
+    setDiagnosisState({ loading: true, error: null });
+    try {
+      const data = await diagnose(problemId, lines, divergent);
+      setDiagnosis(data);
+      setDiagnosisState({ loading: false, error: null });
+    } catch (err) {
+      setDiagnosisState({
+        loading: false,
+        error:
+          err instanceof ApiError
+            ? err.message
+            : "Something went wrong loading the tutor diagnosis.",
+      });
+    }
+  }, [result.correct, problemId, lines, divergent]);
+
+  useEffect(() => {
+    if (result.correct || !problemId || divergent === null) return;
+    // Defer the async fetch so no state updates happen synchronously in the
+    // effect body.
+    const timer = setTimeout(() => void loadDiagnosis(), 0);
+    return () => clearTimeout(timer);
+  }, [loadDiagnosis, result.correct, problemId, divergent]);
+
   if (result.correct) {
     return (
       <div className="flex h-full flex-col items-center justify-center gap-6 text-center">
@@ -38,8 +96,6 @@ export default function ResultScreen({
       </div>
     );
   }
-
-  const divergent = result.divergent_line_index;
 
   return (
     <div className="flex h-full flex-col gap-4">
@@ -94,11 +150,51 @@ export default function ResultScreen({
         })}
       </ul>
 
-      <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-6 py-8 text-center text-slate-500">
-        Tutor explanation (coming soon)
-      </div>
+      {problemId && divergent !== null && (
+        <section className="shrink-0 rounded-2xl border border-indigo-200 bg-indigo-50 px-5 py-4">
+          <h3 className="text-sm font-semibold uppercase tracking-wide text-indigo-800">
+            Orbit&apos;s diagnosis
+          </h3>
+          {diagnosisState.loading ? (
+            <p className="mt-3 text-slate-600">
+              Thinking about where your reasoning went…
+            </p>
+          ) : diagnosisState.error ? (
+            <div className="mt-3">
+              <p className="text-sm text-red-700">{diagnosisState.error}</p>
+              <button
+                type="button"
+                onClick={() => void loadDiagnosis()}
+                className="mt-2 min-h-10 rounded-lg border border-indigo-300 px-4 text-sm text-indigo-700"
+              >
+                Retry diagnosis
+              </button>
+            </div>
+          ) : diagnosis ? (
+            <div className="mt-3 space-y-3 text-slate-800">
+              <span className="inline-block rounded-full bg-white px-3 py-1 text-xs font-medium capitalize text-indigo-700">
+                {diagnosis.error_type.replaceAll("_", " ")}
+              </span>
+              <p className="text-lg font-medium">
+                <TutorText text={diagnosis.summary} />
+              </p>
+              <div className="space-y-2 leading-relaxed">
+                {diagnosis.explanation.split(/\n{2,}/).map((paragraph, i) => (
+                  <p key={i}>
+                    <TutorText text={paragraph} />
+                  </p>
+                ))}
+              </div>
+              <p className="rounded-xl bg-white px-4 py-3">
+                <span className="font-medium text-indigo-800">Try this: </span>
+                <TutorText text={diagnosis.fix_hint} />
+              </p>
+            </div>
+          ) : null}
+        </section>
+      )}
 
-      <div className="flex gap-3">
+      <div className="flex shrink-0 gap-3">
         <button
           type="button"
           onClick={onTryAgain}

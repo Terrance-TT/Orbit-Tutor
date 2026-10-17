@@ -33,6 +33,13 @@ export interface CheckResponse {
   parsed_lines: ParsedLine[];
 }
 
+export interface DiagnoseResponse {
+  error_type: string;
+  summary: string;
+  explanation: string;
+  fix_hint: string;
+}
+
 // Handwriting capture types (V2 will analyze timing; keep timestamps now).
 export interface StrokePoint {
   x: number;
