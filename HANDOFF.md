@@ -34,6 +34,7 @@ Deployed and working end-to-end:
 ## 3. Repository & stack
 
 Repo: `/Users/adam/Orbit` (git, monorepo). Everything below is committed.
+GitHub remote (private): https://github.com/Terrance-TT/Orbit-Tutor — `main` tracks `origin/main`; push with `git push`.
 
 ```
 Orbit/
