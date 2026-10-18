@@ -13,9 +13,36 @@ interface SolveScreenProps {
   onSubmitHandwriting: () => void;
   onSubmitTyped: (lines: string[]) => void;
   onBack: () => void;
+  /** Known-correct lines the student must not edit (correction mode). */
+  prefixLines?: string[];
+  submitLabel?: string;
 }
 
 type InputMode = "draw" | "type";
+
+function CorrectPrefix({ lines }: { lines: string[] }) {
+  return (
+    <div className="border-b border-emerald-100 bg-emerald-50 px-4 py-2">
+      <p className="text-xs font-medium text-emerald-800">
+        {lines.length > 0
+          ? `Correct through line ${lines.length}. Continue from line ${lines.length + 1}.`
+          : "Start again from line 1."}
+      </p>
+      {lines.length > 0 && (
+        <div className="mt-1 max-h-24 space-y-1 overflow-y-auto">
+          {lines.map((line, i) => (
+            <div key={i} className="flex items-center gap-2 text-base">
+              <span className="w-5 text-right text-xs text-emerald-600">
+                {i + 1}
+              </span>
+              <Latex latex={line} />
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function SolveScreen({
   problem,
@@ -25,6 +52,8 @@ export default function SolveScreen({
   onSubmitHandwriting,
   onSubmitTyped,
   onBack,
+  prefixLines,
+  submitLabel = "Check my work",
 }: SolveScreenProps) {
   const [mode, setMode] = useState<InputMode>("draw");
   const [typedLines, setTypedLines] = useState<string[]>([""]);
@@ -68,6 +97,8 @@ export default function SolveScreen({
           </button>
         </div>
 
+        {prefixLines && <CorrectPrefix lines={prefixLines} />}
+
         <div className="min-h-0 flex-1 px-3 pt-2">
           <DrawingCanvas
             strokes={strokes}
@@ -86,7 +117,7 @@ export default function SolveScreen({
             disabled={submitDisabled}
             className="min-h-14 flex-1 rounded-2xl bg-indigo-600 text-xl font-medium text-white disabled:opacity-40"
           >
-            {busy ? "Reading your work…" : "Check my work"}
+            {busy ? "Reading your work…" : submitLabel}
           </button>
         </div>
       </div>
@@ -129,6 +160,8 @@ export default function SolveScreen({
       <div className="rounded-2xl bg-indigo-50 px-6 py-5 text-2xl text-slate-900">
         <Latex latex={problem.prompt_latex} block />
       </div>
+
+      {prefixLines && <CorrectPrefix lines={prefixLines} />}
 
       <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto">
         {typedLines.map((line, i) => (
@@ -174,7 +207,7 @@ export default function SolveScreen({
         disabled={submitDisabled}
         className="min-h-14 rounded-2xl bg-indigo-600 text-xl font-medium text-white disabled:opacity-40"
       >
-        {busy ? "Reading your work…" : "Check my work"}
+        {busy ? "Reading your work…" : submitLabel}
       </button>
     </div>
   );

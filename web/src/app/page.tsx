@@ -21,7 +21,7 @@ import ProblemPicker from "@/components/ProblemPicker";
 import ResultScreen from "@/components/ResultScreen";
 import SolveScreen from "@/components/SolveScreen";
 
-type Screen = "picker" | "solve" | "confirm" | "result";
+type Screen = "picker" | "solve" | "confirm" | "result" | "correct";
 
 interface AsyncState {
   loading: boolean;
@@ -42,6 +42,10 @@ export default function Home() {
   >([]);
   const [confirmedLatex, setConfirmedLatex] = useState<string[]>([]);
   const [checkResult, setCheckResult] = useState<CheckResponse | null>(null);
+  // Null during a normal solve; the frozen correct prefix during correction.
+  const [correctionPrefix, setCorrectionPrefix] = useState<string[] | null>(
+    null,
+  );
   const [submitState, setSubmitState] = useState<AsyncState>({
     loading: false,
     error: null,
@@ -158,10 +162,15 @@ export default function Home() {
     if (!problem) return;
     setSubmitState({ loading: true, error: null });
     try {
-      const result = await checkWork(problem.id, lines);
-      setConfirmedLatex(lines);
+      // During correction, the student only supplied the reworked suffix.
+      const fullLines = correctionPrefix
+        ? [...correctionPrefix, ...lines]
+        : lines;
+      const result = await checkWork(problem.id, fullLines);
+      setConfirmedLatex(fullLines);
       setCheckResult(result);
       if (result.correct) clearStrokes(problem.id);
+      setCorrectionPrefix(null);
       setSubmitState({ loading: false, error: null });
       setScreen("result");
     } catch (err) {
@@ -175,11 +184,27 @@ export default function Home() {
     }
   };
 
+  const startCorrection = () => {
+    if (!checkResult) return;
+    const divergent = checkResult.divergent_line_index;
+    if (divergent === null) {
+      setScreen("solve");
+      return;
+    }
+    // Freeze everything before the first wrong line; the student redoes the
+    // divergent line and everything after it.
+    setCorrectionPrefix(confirmedLatex.slice(0, divergent));
+    setStrokes([]);
+    setSubmitState({ loading: false, error: null });
+    setScreen("correct");
+  };
+
   const goToPicker = () => {
     setScreen("picker");
     setProblem(null);
     setStrokes([]);
     setCheckResult(null);
+    setCorrectionPrefix(null);
   };
 
   return (
@@ -261,13 +286,29 @@ export default function Home() {
           />
         )}
 
+        {screen === "correct" && problem && correctionPrefix && (
+          <SolveScreen
+            problem={problem}
+            strokes={strokes}
+            onStrokesChange={setStrokes}
+            busy={submitState.loading}
+            onSubmitHandwriting={handleSubmitHandwriting}
+            onSubmitTyped={handleSubmitTyped}
+            onBack={() => setScreen("result")}
+            prefixLines={correctionPrefix}
+            submitLabel="Check my correction"
+          />
+        )}
+
         {screen === "confirm" && (
           <ConfirmationScreen
             key={confirmationLines.map((l) => l.latex).join("")}
             lines={confirmationLines}
             busy={submitState.loading}
             onConfirm={handleConfirm}
-            onBack={() => setScreen(problem ? "solve" : "picker")}
+            onBack={() =>
+              setScreen(correctionPrefix ? "correct" : problem ? "solve" : "picker")
+            }
           />
         )}
 
@@ -277,7 +318,7 @@ export default function Home() {
             lines={confirmedLatex}
             result={checkResult}
             onNextProblem={goToPicker}
-            onTryAgain={() => setScreen("solve")}
+            onTryAgain={startCorrection}
           />
         )}
       </div>

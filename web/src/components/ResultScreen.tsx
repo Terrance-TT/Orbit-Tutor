@@ -200,7 +200,7 @@ export default function ResultScreen({
           onClick={onTryAgain}
           className="min-h-14 flex-1 rounded-2xl border border-slate-300 text-lg text-slate-700"
         >
-          Revise my work
+          {divergent !== null ? `Fix from line ${divergent + 1}` : "Revise my work"}
         </button>
         <button
           type="button"

@@ -12,7 +12,7 @@ Orbit is an AI math tutor that locates the exact step where a student's reasonin
 2. Each handwritten line is recognized as LaTeX via **Mathpix**.
 3. The student **confirms the recognized reading** (diagnosis never proceeds on an unconfirmed reading).
 4. A **SymPy checker** validates every line-to-line transition symbolically and reports the **first divergent line**.
-5. The tutor diagnoses the misconception at that line and gives a short explanation (built; live LLM output requires `TUTOR_API_KEY`). Still not built: resume-from-last-correct-line and a follow-up verification problem.
+5. The tutor diagnoses the misconception at that line and gives a short explanation (built; live LLM output requires `TUTOR_API_KEY`). The student then resumes from the first divergent line and reworks the suffix themselves (built). Still not built: follow-up verification and learner-aware next-step routing.
 
 Design principles: silent by default (no mid-work interruption), symbolic checking only (never string matching), any mathematically valid solution route is accepted.
 
@@ -24,13 +24,14 @@ Deployed and working end-to-end:
 - **API:** https://api-production-ea51.up.railway.app
 - Problem picker with **19 Algebra 1 problems** (one/two-step equations, distribution, combining like terms, simple factoring).
 - Full-screen Pencil-only writing with instant ink, rapid successive strokes work, palm/finger rejection.
-- Live Mathpix recognition with per-line reading confirmation (edit + confirm-all; low-confidence badges).
+- Live Mathpix recognition with per-line reading confirmation (edit + confirm-all; low-confidence badges and problem-aware misread warnings).
 - Symbolic checking with divergent-line highlighting in the student's own work; quiet success state on correct answers.
 - **Tutor diagnosis at the divergent line:** misconception classification (`arithmetic_slip`, `sign_error`, `distribution_error`, `concept_misconception`, `misread_problem`, `other`), summary, micro-explanation, and fix hint. Uses Kimi/Moonshot; deterministic mock tutor for local dev. Production needs `TUTOR_API_KEY`.
+- **Correction flow:** `Fix from line N` freezes the correct prefix through line N−1 and gives the student a fresh writing/typing surface for the suffix. `/check` validates prefix + new suffix; wrong again loops with the new divergent line, correct returns to quiet success.
 - "Type instead" mode (enter LaTeX lines without handwriting; still passes through confirmation).
 - `/ink-test` diagnostic page and `?debug=1` pointer-event HUD for device debugging.
 
-**Not built yet:** resume-from-last-correct-line flow, follow-up verification problems, learner model/memory, explanation-style personalization, hesitation/stroke analytics, voice, accounts/database.
+**Not built yet:** follow-up verification problems, learner-aware next-step routing, learner model/memory, explanation-style personalization, hesitation/stroke analytics, voice, accounts/database.
 
 ## 3. Repository & stack
 
@@ -161,10 +162,10 @@ Deploying from the repo root uploads the whole monorepo and Railpack fails — a
 
 ## 8. What to build next (in priority order)
 
-1. **Follow-up verification problem** after a fix + resume-from-last-correct-line flow (the diagnosis itself is now built).
-2. **Explanation-style escalation and self-correction first** — where appropriate, tell the student an error exists between lines N–M before showing the full diagnosis; if one explanation style doesn't land, try another (visual, numeric example, analogy).
-3. **Expand math coverage** as a family of checkers behind one interface: next easiest = quadratics, systems of equations, expression simplification (equivalence rather than solution-set mode), each with pytest fixtures and domain-specific tutor prompts. Trig/calculus later (LaTeX parsing gets fragile). Word problems/geometry/proofs need an LLM-based checker, not SymPy.
-4. **Learner model** (misconception log, explanation-style preferences) — needs a database (none yet; all state is client-side + localStorage).
+1. **Expand math coverage** as a family of checkers behind one interface: next easiest = quadratics, systems of equations, expression simplification (equivalence rather than solution-set mode), each with pytest fixtures and domain-specific tutor prompts. Each domain chat owns its divergent-line/checker rules, problem bank, and tutor prompts; the correction UI is already generic. Trig/calculus later (LaTeX parsing gets fragile). Word problems/geometry/proofs need an LLM-based checker, not SymPy.
+2. **Follow-up verification problem** after a fix, then learner-aware next-step routing (practice/video/drill/next) once the main math domains are covered.
+3. **Explanation-style escalation and self-correction first** — where appropriate, tell the student an error exists between lines N–M before showing the full diagnosis; if one explanation style doesn't land, try another (visual, numeric example, analogy).
+4. **Learner model** (misconception log, explanation-style preferences) — needs a database (none yet; all state is client-side + localStorage). Deliberately deferred until domain coverage is in place.
 
 Original spec sections still worth honoring: privacy/COPPA stance (no camera ever, data export/delete, no ads), silence-by-default, self-correction before explanation.
 
