@@ -107,7 +107,7 @@ Deploying from the repo root uploads the whole monorepo and Railpack fails — a
 
 **Environment variables:**
 - `api`: `MATHPIX_APP_ID`, `MATHPIX_APP_KEY`, `TUTOR_API_KEY` (all via Railway secrets), `MATHPIX_MOCK=false`, `TUTOR_MOCK=false`, `WEB_ORIGIN=https://web-production-b030b.up.railway.app`.
-- Optional tutor overrides: `TUTOR_BASE_URL` (default `https://api.moonshot.ai/v1`) and `TUTOR_MODEL` (default `kimi-k2-0905-preview`). If Moonshot rejects the default model ID, set `TUTOR_MODEL` to a model enabled on the account.
+- Optional tutor overrides: `TUTOR_BASE_URL` (default `https://api.moonshot.ai/v1`) and `TUTOR_MODEL` (default `kimi-k2.6`). If Moonshot rejects the default model ID, set `TUTOR_MODEL` to a model enabled on the account (query `GET /v1/models` with the account key).
 - `web`: `NEXT_PUBLIC_API_URL=https://api-production-ea51.up.railway.app` — **build-time** (inlined into the bundle); changing it requires a rebuild/redeploy.
 - Local mock mode: `MATHPIX_MOCK=true`, `TUTOR_MOCK=true`; optional `MATHPIX_MOCK_SCENARIO=correct|sign_error|distribution_error`.
 

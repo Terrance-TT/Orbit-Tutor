@@ -17,7 +17,7 @@ from typing import Protocol
 import httpx
 
 DEFAULT_BASE_URL = "https://api.moonshot.ai/v1"
-DEFAULT_MODEL = "kimi-k2-0905-preview"
+DEFAULT_MODEL = "kimi-k2.6"
 
 ERROR_TYPES = {
     "arithmetic_slip",
@@ -133,7 +133,7 @@ class KimiTutorClient:
         api_key: str,
         base_url: str = DEFAULT_BASE_URL,
         model: str = DEFAULT_MODEL,
-        timeout: float = 45.0,
+        timeout: float = 120.0,
     ):
         self._api_key = api_key
         self._base_url = base_url.rstrip("/")
@@ -149,7 +149,6 @@ class KimiTutorClient:
             json={
                 "model": self._model,
                 "messages": build_messages(problem, lines, divergent_line_index),
-                "temperature": 0.2,
             },
             timeout=self._timeout,
         )

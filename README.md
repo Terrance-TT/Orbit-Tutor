@@ -49,7 +49,7 @@ locally):
   diagnosis for local dev.
 - `TUTOR_API_KEY` — Moonshot/Kimi key for live tutor diagnoses.
 - `TUTOR_BASE_URL` / `TUTOR_MODEL` — optional overrides (defaults
-  `https://api.moonshot.ai/v1` and `kimi-k2-0905-preview`).
+  `https://api.moonshot.ai/v1` and `kimi-k2.6`).
 - `WEB_ORIGIN=http://localhost:3000` — CORS origin for the frontend.
 
 ### Web (`web/`)
