@@ -43,7 +43,7 @@ def parse_line(raw: str, allowed_symbols: set[sp.Symbol] | None = None):
     return expr, None
 
 
-def _problem_variable(problem: dict) -> sp.Symbol:
+def problem_variable(problem: dict) -> sp.Symbol:
     expr, _ = parse_line(problem["prompt_latex"])
     symbols = sorted(expr.free_symbols, key=str) if expr is not None else []
     if symbols:
@@ -111,7 +111,7 @@ def check(problem: dict, lines: list[str]) -> dict:
     diverges at index 0. Unparseable lines are reported distinctly and never
     counted as divergent, but they do make the attempt not certifiably correct.
     """
-    var = _problem_variable(problem)
+    var = problem_variable(problem)
     prompt_expr, _ = parse_line(problem["prompt_latex"])
     answer_expr, _ = parse_line(problem["answer_latex"])
 

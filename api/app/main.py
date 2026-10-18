@@ -87,6 +87,20 @@ def recognize(request: RecognizeRequest) -> dict:
             status_code=502, detail=f"Mathpix request failed: {exc}"
         ) from exc
     lines = [line for image_lines in per_image for line in image_lines]
+    if request.problem_id is not None:
+        problem = get_problem(request.problem_id)
+        if problem is None:
+            raise HTTPException(
+                status_code=404,
+                detail=f"unknown problem {request.problem_id!r}",
+            )
+        var = checker.problem_variable(problem)
+        for line in lines:
+            _, err = checker.parse_line(line["latex"], {var})
+            if err:
+                # OCR confidence is not a plausibility check: a confidently
+                # wrong Greek letter should still be called out for review.
+                line["warning"] = "Possible misread — please check this line carefully."
     return {"lines": [RecognizedLine(**line).model_dump() for line in lines]}
 
 

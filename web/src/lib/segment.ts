@@ -62,21 +62,21 @@ export interface LineImage {
   bounds: Bounds;
 }
 
-// Render one line group to a cropped PNG dataURL: white background, generous
-// padding so ascenders/descenders aren't clipped, 3x scale so Mathpix gets a
-// sharp, high-contrast image.
+// Render one line group to a cropped JPEG dataURL. Upscale small writing for
+// sharpness, but cap the output at Mathpix-friendly dimensions: oversized
+// images are rejected with sys_request_too_large or degrade recognition.
 export function renderLineImage(
   group: LineGroup,
   padding = 28,
-  scale = 3,
 ): LineImage {
   const { minX, minY, maxX, maxY } = group.bounds;
   const width = Math.max(maxX - minX + padding * 2, 8);
   const height = Math.max(maxY - minY + padding * 2, 8);
+  const scale = Math.min(3, 1800 / width, 600 / height);
 
   const canvas = document.createElement("canvas");
-  canvas.width = Math.round(width * scale);
-  canvas.height = Math.round(height * scale);
+  canvas.width = Math.max(Math.round(width * scale), 1);
+  canvas.height = Math.max(Math.round(height * scale), 1);
   const ctx = canvas.getContext("2d");
   if (!ctx) throw new Error("Canvas 2D context unavailable");
 
@@ -85,7 +85,10 @@ export function renderLineImage(
   ctx.fillRect(0, 0, width, height);
   drawStrokes(ctx, group.strokes, padding - minX, padding - minY);
 
-  return { dataUrl: canvas.toDataURL("image/png"), bounds: group.bounds };
+  return {
+    dataUrl: canvas.toDataURL("image/jpeg", 0.92),
+    bounds: group.bounds,
+  };
 }
 
 // Segment all strokes and render each line to a PNG, ordered top-to-bottom.

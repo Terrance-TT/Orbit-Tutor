@@ -14,6 +14,7 @@ export interface ProblemDetail extends ProblemSummary {
 export interface RecognizedLine {
   latex: string;
   confidence: number;
+  warning?: string | null;
 }
 
 export interface RecognizeResponse {

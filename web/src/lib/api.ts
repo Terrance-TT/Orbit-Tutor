@@ -51,10 +51,15 @@ export function getProblem(id: string): Promise<ProblemDetail> {
   return request<ProblemDetail>(`/problems/${encodeURIComponent(id)}`);
 }
 
-export function recognize(images: string[]): Promise<RecognizeResponse> {
+export function recognize(
+  images: string[],
+  problemId?: string,
+): Promise<RecognizeResponse> {
   return request<RecognizeResponse>("/recognize", {
     method: "POST",
-    body: JSON.stringify({ images }),
+    body: JSON.stringify(
+      problemId ? { images, problem_id: problemId } : { images },
+    ),
   });
 }
 

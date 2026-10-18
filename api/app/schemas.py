@@ -15,12 +15,14 @@ class ProblemDetail(ProblemSummary):
 
 
 class RecognizeRequest(BaseModel):
-    images: list[str]  # data URLs, e.g. "data:image/png;base64,..."
+    images: list[str]  # data URLs, e.g. "data:image/jpeg;base64,..."
+    problem_id: str | None = None  # enables implausible-reading warnings
 
 
 class RecognizedLine(BaseModel):
     latex: str
     confidence: float
+    warning: str | None = None
 
 
 class RecognizeResponse(BaseModel):

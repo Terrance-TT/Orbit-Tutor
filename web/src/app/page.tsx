@@ -122,11 +122,15 @@ export default function Home() {
     setSubmitState({ loading: true, error: null });
     try {
       const lineImages = strokesToLineImages(strokes);
-      const { lines } = await recognize(lineImages.map((l) => l.dataUrl));
+      const { lines } = await recognize(
+        lineImages.map((l) => l.dataUrl),
+        problem.id,
+      );
       setConfirmationLines(
         lines.map((line, i) => ({
           latex: line.latex,
           confidence: line.confidence,
+          warning: line.warning,
           imageDataUrl: lineImages[i]?.dataUrl,
         })),
       );

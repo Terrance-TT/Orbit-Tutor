@@ -6,6 +6,7 @@ import Latex from "./Latex";
 export interface ConfirmationLine {
   latex: string;
   confidence?: number;
+  warning?: string | null;
   imageDataUrl?: string;
 }
 
@@ -87,6 +88,11 @@ export default function ConfirmationScreen({
                   </span>
                 )}
               </div>
+              {line.warning && (
+                <p className="rounded-lg bg-amber-100 px-3 py-2 text-sm text-amber-800">
+                  {line.warning}
+                </p>
+              )}
               <div className="flex items-center gap-3 pl-11">
                 <input
                   value={edited[i]}

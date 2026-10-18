@@ -69,7 +69,7 @@ Orbit/
 │   │   └── lib/
 │   │       ├── api.ts          # Typed fetch wrappers (screens never call fetch directly)
 │   │       ├── types.ts        # Stroke = { points: [{x, y, t}] }, API types
-│   │       ├── segment.ts      # Strokes → per-line PNGs for Mathpix
+│   │       ├── segment.ts      # Strokes → capped per-line JPEGs for Mathpix
 │   │       ├── ink.ts          # Ink constants + canvas drawing helpers (export only)
 │   │       └── storage.ts      # localStorage persistence (SSR-guarded)
 │   ├── public/ink-test.js + public/vendor/signature_pad.umd.min.js
@@ -91,7 +91,7 @@ cd web && npm install && npm run dev                                      # http
 
 **Checks before committing:**
 ```bash
-cd api && .venv/bin/python -m pytest tests/ -q     # expect 19 passed
+cd api && .venv/bin/python -m pytest tests/ -q     # expect 21 passed
 cd web && npm run lint && npm run build            # expect clean
 ```
 
@@ -116,7 +116,7 @@ Deploying from the repo root uploads the whole monorepo and Railpack fails — a
 **API contract (frontend depends on exact shapes):**
 - `GET /problems` → `[{id, title, prompt_latex, skills}]`
 - `GET /problems/{id}` → same + `answer_latex`
-- `POST /recognize` — body `{images: [dataURL,...]}` → `{lines: [{latex, confidence}]}`
+- `POST /recognize` — body `{images: [dataURL,...], problem_id?}` → `{lines: [{latex, confidence, warning}]}`. When `problem_id` is provided, lines containing symbols outside the problem variable get `warning: "Possible misread…"` (OCR confidence alone is not a plausibility check); valid lines have `warning: null`.
 - `POST /check` — body `{problem_id, lines: [latex,...]}` → `{correct, divergent_line_index, final_answer_correct, parsed_lines: [{raw, parsed, status}]}`
 - `POST /diagnose` — body `{problem_id, lines: [latex,...], divergent_line_index?}` → `{error_type, summary, explanation, fix_hint}`. If the index is omitted, the server recomputes it with the checker; correct/no-divergence work returns 400.
 
@@ -131,6 +131,8 @@ Deploying from the repo root uploads the whole monorepo and Railpack fails — a
 - Response: prefer `line_data[]` entries (skip `included: false`), take `latex` or `text`, strip `\(...\)` / `$...$` delimiters; fall back to whole-result `latex_styled`/`text` split by newlines.
 - Errors: missing credentials with `MATHPIX_MOCK=false` → **503 naming the missing variable** (never silently mock in prod — that once looked like "awful recognition"); Mathpix `error_info` or empty result → 502. Per-image calls fan out via `ThreadPoolExecutor(max_workers=4)`.
 - Mock client returns canned lines for local dev only.
+
+**Recognition image pipeline (`web/src/lib/segment.ts`):** line crops are JPEGs (quality 0.92) scaled by `min(3, 1800/width, 600/height)`. Do not restore a fixed 3× export — oversized images triggered Mathpix `sys_request_too_large` and recognition hiccups. The confirmation screen displays the backend's `warning` beside any suspicious reading so the student can correct it before checking.
 
 **Tutor (`tutor.py`):**
 - The checker finds the divergent line deterministically; the LLM only classifies and explains it. Prompt includes the problem, known answer, and numbered student lines with `FIRST WRONG LINE` marked. Response must be JSON with `error_type`, `summary`, `explanation`, `fix_hint`; fenced/prose-wrapped JSON is tolerated and unknown error types map to `other`.
