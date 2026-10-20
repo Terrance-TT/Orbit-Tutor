@@ -27,7 +27,7 @@ Deployed and working end-to-end:
 - Live Mathpix recognition with per-line reading confirmation (edit + confirm-all; low-confidence badges and problem-aware misread warnings).
 - Symbolic checking with divergent-line highlighting in the student's own work; quiet success state on correct answers.
 - **Tutor diagnosis at the divergent line:** misconception classification (`arithmetic_slip`, `sign_error`, `distribution_error`, `concept_misconception`, `misread_problem`, `other`), summary, micro-explanation, and fix hint. Uses Kimi/Moonshot; deterministic mock tutor for local dev. Production needs `TUTOR_API_KEY`.
-- **Correction flow:** `Fix from line N` freezes the correct prefix through line N−1 and gives the student a fresh writing/typing surface for the suffix. `/check` validates prefix + new suffix; wrong again loops with the new divergent line, correct returns to quiet success.
+- **Correction flow:** `Fix from line N` freezes the correct prefix through line N−1 and gives the student a fresh writing/typing surface for the suffix. In handwriting mode the student's own prefix ink stays on the canvas read-only (`prefixStrokes`, segmented from the original strokes); typed mode shows the LaTeX prefix instead. `/check` validates prefix + new suffix; wrong again loops with the new divergent line, correct returns to quiet success. Result wording marks the divergent line as where the mistake is “first visible” (no “starts here” chip).
 - "Type instead" mode (enter LaTeX lines without handwriting; still passes through confirmation).
 - `/ink-test` diagnostic page and `?debug=1` pointer-event HUD for device debugging.
 

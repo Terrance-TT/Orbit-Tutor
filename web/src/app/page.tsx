@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { ApiError, checkWork, getProblem, getProblems, recognize } from "@/lib/api";
-import { strokesToLineImages } from "@/lib/segment";
+import { segmentLines, strokesToLineImages } from "@/lib/segment";
 import {
   clearStrokes,
   loadStrokes,
@@ -46,6 +46,10 @@ export default function Home() {
   const [correctionPrefix, setCorrectionPrefix] = useState<string[] | null>(
     null,
   );
+  // The student's own ink for that prefix, kept read-only on the canvas.
+  const [correctionPrefixStrokes, setCorrectionPrefixStrokes] = useState<
+    Stroke[] | null
+  >(null);
   const [submitState, setSubmitState] = useState<AsyncState>({
     loading: false,
     error: null,
@@ -171,6 +175,7 @@ export default function Home() {
       setCheckResult(result);
       if (result.correct) clearStrokes(problem.id);
       setCorrectionPrefix(null);
+      setCorrectionPrefixStrokes(null);
       setSubmitState({ loading: false, error: null });
       setScreen("result");
     } catch (err) {
@@ -191,9 +196,18 @@ export default function Home() {
       setScreen("solve");
       return;
     }
+    // Preserve the student's ink for the valid prefix before clearing the
+    // writing surface; the student continues beneath their own handwriting.
+    const prefixStrokes =
+      divergent > 0
+        ? segmentLines(strokes)
+            .slice(0, divergent)
+            .flatMap((group) => group.strokes)
+        : null;
     // Freeze everything before the first wrong line; the student redoes the
     // divergent line and everything after it.
     setCorrectionPrefix(confirmedLatex.slice(0, divergent));
+    setCorrectionPrefixStrokes(prefixStrokes);
     setStrokes([]);
     setSubmitState({ loading: false, error: null });
     setScreen("correct");
@@ -205,6 +219,7 @@ export default function Home() {
     setStrokes([]);
     setCheckResult(null);
     setCorrectionPrefix(null);
+    setCorrectionPrefixStrokes(null);
   };
 
   return (
@@ -296,6 +311,7 @@ export default function Home() {
             onSubmitTyped={handleSubmitTyped}
             onBack={() => setScreen("result")}
             prefixLines={correctionPrefix}
+            prefixStrokes={correctionPrefixStrokes ?? undefined}
             submitLabel="Check my correction"
           />
         )}

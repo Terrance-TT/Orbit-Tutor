@@ -8,6 +8,8 @@ interface DrawingCanvasProps {
   strokes: Stroke[];
   onStrokesChange: (strokes: Stroke[]) => void;
   disabled?: boolean;
+  /** Read-only handwriting the student continues from (correction mode). */
+  prefixStrokes?: Stroke[];
 }
 
 export function pathFromPoints(points: StrokePoint[]): string {
@@ -34,6 +36,7 @@ export default function DrawingCanvas({
   strokes,
   onStrokesChange,
   disabled = false,
+  prefixStrokes,
 }: DrawingCanvasProps) {
   const svgRef = useRef<SVGSVGElement>(null);
   const activePathRef = useRef<SVGPathElement>(null);
@@ -246,6 +249,13 @@ export default function DrawingCanvas({
           style={{ touchAction: "none", WebkitTouchCallout: "none" }}
           onContextMenu={(e) => e.preventDefault()}
         >
+          {prefixStrokes?.map((stroke, i) => (
+            <path
+              key={`prefix-${i}`}
+              d={pathFromPoints(stroke.points)}
+              {...strokeProps}
+            />
+          ))}
           {strokes.map((stroke, i) => (
             <path key={i} d={pathFromPoints(stroke.points)} {...strokeProps} />
           ))}

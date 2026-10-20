@@ -105,9 +105,9 @@ export default function ResultScreen({
         </h2>
         <p className="mt-1 text-base text-slate-600">
           {divergent !== null && divergent > 0
-            ? `Your work is correct through line ${divergent}. The problem starts here:`
+            ? `Your work is correct through line ${divergent}. The mistake is first visible here:`
             : divergent === 0
-              ? "The problem starts on your very first line:"
+              ? "The mistake is first visible on your very first line:"
               : result.final_answer_correct
                 ? "Your final answer is right, but some steps couldn't be followed:"
                 : "Your reasoning is fine, but the final answer doesn't match:"}
@@ -134,11 +134,6 @@ export default function ResultScreen({
                 <div className="min-w-0 flex-1 overflow-x-auto text-xl">
                   <Latex latex={line} />
                 </div>
-                {isDivergent && (
-                  <span className="shrink-0 rounded-full bg-amber-200 px-3 py-1 text-xs font-medium text-amber-900">
-                    starts here
-                  </span>
-                )}
               </div>
               {parsed && parsed.status !== "ok" && (
                 <p className="mt-1 pl-11 text-sm text-slate-500">

@@ -15,12 +15,20 @@ interface SolveScreenProps {
   onBack: () => void;
   /** Known-correct lines the student must not edit (correction mode). */
   prefixLines?: string[];
+  /** Read-only handwritten prefix strokes to continue from (draw mode). */
+  prefixStrokes?: Stroke[];
   submitLabel?: string;
 }
 
 type InputMode = "draw" | "type";
 
-function CorrectPrefix({ lines }: { lines: string[] }) {
+function CorrectPrefix({
+  lines,
+  showLines = true,
+}: {
+  lines: string[];
+  showLines?: boolean;
+}) {
   return (
     <div className="border-b border-emerald-100 bg-emerald-50 px-4 py-2">
       <p className="text-xs font-medium text-emerald-800">
@@ -28,7 +36,7 @@ function CorrectPrefix({ lines }: { lines: string[] }) {
           ? `Correct through line ${lines.length}. Continue from line ${lines.length + 1}.`
           : "Start again from line 1."}
       </p>
-      {lines.length > 0 && (
+      {showLines && lines.length > 0 && (
         <div className="mt-1 max-h-24 space-y-1 overflow-y-auto">
           {lines.map((line, i) => (
             <div key={i} className="flex items-center gap-2 text-base">
@@ -53,6 +61,7 @@ export default function SolveScreen({
   onSubmitTyped,
   onBack,
   prefixLines,
+  prefixStrokes,
   submitLabel = "Check my work",
 }: SolveScreenProps) {
   const [mode, setMode] = useState<InputMode>("draw");
@@ -97,13 +106,19 @@ export default function SolveScreen({
           </button>
         </div>
 
-        {prefixLines && <CorrectPrefix lines={prefixLines} />}
+        {prefixLines && (
+          <CorrectPrefix
+            lines={prefixLines}
+            showLines={!prefixStrokes?.length}
+          />
+        )}
 
         <div className="min-h-0 flex-1 px-3 pt-2">
           <DrawingCanvas
             strokes={strokes}
             onStrokesChange={onStrokesChange}
             disabled={busy}
+            prefixStrokes={prefixStrokes}
           />
         </div>
 
