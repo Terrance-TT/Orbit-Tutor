@@ -180,9 +180,10 @@ Deploying from the repo root uploads the whole monorepo and Railpack fails — a
 ## 8. What to build next (in priority order)
 
 1. ~~Expand math coverage~~ **Done for Algebra 2:** domain-plugin framework (`api/app/domains/`) with `algebra2` (quadratics, polynomial arithmetic, factoring incl. cubics, simplification, radical/rational equations, exp/log, absolute value, polynomial division) and `systems` (2x2 linear). Remaining: 3D/nonlinear systems, trig/calculus (LaTeX parsing gets fragile), inequalities (interval answers don't parse). Word problems/geometry/proofs need an LLM-based checker, not SymPy.
-2. **Follow-up verification problem** after a fix, then learner-aware next-step routing (practice/video/drill/next) once the main math domains are covered.
-3. **Explanation-style escalation and self-correction first** — where appropriate, tell the student an error exists between lines N–M before showing the full diagnosis; if one explanation style doesn't land, try another (visual, numeric example, analogy).
-4. **Learner model** (misconception log, explanation-style preferences) — needs a database (none yet; all state is client-side + localStorage). Deliberately deferred until domain coverage is in place.
+2. **Scratch pen** — scratch-work capture layer (Solve/Scratch toggle, separate strokes, never in `/check`) plus SymPy scratch analysis feeding the tutor (false-fragment detection, slip linking, justify-path note). **Full approved design: `docs/scratch-pen-plan.md` — start there.**
+3. **Follow-up verification problem** after a fix, then learner-aware next-step routing (practice/video/drill/next) once the main math domains are covered.
+4. **Explanation-style escalation and self-correction first** — where appropriate, tell the student an error exists between lines N–M before showing the full diagnosis; if one explanation style doesn't land, try another (visual, numeric example, analogy).
+5. **Learner model** (misconception log, explanation-style preferences) — needs a database (none yet; all state is client-side + localStorage). Deliberately deferred until domain coverage is in place.
 
 Original spec sections still worth honoring: privacy/COPPA stance (no camera ever, data export/delete, no ads), silence-by-default, self-correction before explanation.
 
