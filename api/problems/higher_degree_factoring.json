@@ -1,0 +1,20 @@
+[
+  {
+    "id": "hd-01",
+    "title": "Factor a cubic (rational roots)",
+    "prompt_latex": "x^3-2x^2-5x+6",
+    "answer_latex": "(x-1)(x+2)(x-3)",
+    "skills": ["factoring", "cubics", "rational-root-theorem", "algebra-2"],
+    "domain": "algebra2",
+    "form": "factored"
+  },
+  {
+    "id": "hd-02",
+    "title": "Factor by grouping",
+    "prompt_latex": "x^3+3x^2-4x-12",
+    "answer_latex": "(x+2)(x-2)(x+3)",
+    "skills": ["factoring", "cubics", "factoring-by-grouping", "algebra-2"],
+    "domain": "algebra2",
+    "form": "factored"
+  }
+]

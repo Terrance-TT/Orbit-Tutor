@@ -1,0 +1,11 @@
+{
+  "name": "systems_elimination_correct",
+  "description": "Classic elimination: restate the system, add the equations, solve for x, back-substitute for y",
+  "problem_id": "sys-01",
+  "lines": ["x+y=5", "x-y=1", "2x=6", "x=3", "3+y=5", "y=2"],
+  "expected": {
+    "correct": true,
+    "divergent_line_index": null,
+    "final_answer_correct": true
+  }
+}

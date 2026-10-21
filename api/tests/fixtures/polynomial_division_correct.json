@@ -1,0 +1,11 @@
+{
+  "name": "polynomial_division_correct",
+  "description": "Factor the numerator, cancel (x+1), arrive at the simplified quotient",
+  "problem_id": "pdiv-01",
+  "lines": ["\\frac{(x+1)(x^2+x-6)}{x+1}", "x^2+x-6"],
+  "expected": {
+    "correct": true,
+    "divergent_line_index": null,
+    "final_answer_correct": true
+  }
+}

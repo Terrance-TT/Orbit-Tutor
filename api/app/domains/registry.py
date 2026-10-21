@@ -26,6 +26,11 @@ class DomainHooks:
     final_answer_ok(exprs, answer_expr, var, problem) -> bool | None
     final_form_ok(expr, problem) -> bool | None
     tutor_prompt_addendum(problem) -> str
+    allowed_symbols(problem) -> set[Symbol] | None  (multi-variable domains)
+    check_all(problem, exprs) -> (divergent_line_index, final_answer_correct) | None
+        Full takeover for domains whose step semantics don't fit the
+        core anchor loop (e.g. systems of equations, where a step is valid
+        as a consequence of ALL trusted lines, not just the previous one).
     """
 
     name: str
@@ -33,6 +38,8 @@ class DomainHooks:
     final_answer_ok: Callable | None = None
     final_form_ok: Callable | None = None
     tutor_prompt_addendum: Callable | None = None
+    allowed_symbols: Callable | None = None
+    check_all: Callable | None = None
     extra_error_types: frozenset = field(default_factory=frozenset)
 
 

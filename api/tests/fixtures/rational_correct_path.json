@@ -1,0 +1,11 @@
+{
+  "name": "rational_correct_path",
+  "description": "Multiply both sides of (x+1)/(x-2)=3 by (x-2) and solve",
+  "problem_id": "rat-01",
+  "lines": ["x+1=3(x-2)", "x+1=3x-6", "7=2x", "x=\\frac{7}{2}"],
+  "expected": {
+    "correct": true,
+    "divergent_line_index": null,
+    "final_answer_correct": true
+  }
+}

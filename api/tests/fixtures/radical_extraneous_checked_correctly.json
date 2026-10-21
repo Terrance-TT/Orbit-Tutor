@@ -1,0 +1,11 @@
+{
+  "name": "radical_extraneous_checked_correctly",
+  "description": "Same squaring route, but the student checks candidates and states only the valid root",
+  "problem_id": "rad-02",
+  "lines": ["2x+1=(x-1)^2", "x^2-4x=0", "x=4"],
+  "expected": {
+    "correct": true,
+    "divergent_line_index": null,
+    "final_answer_correct": true
+  }
+}

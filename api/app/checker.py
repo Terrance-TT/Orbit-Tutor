@@ -118,10 +118,15 @@ def check(problem: dict, lines: list[str]) -> dict:
     answer_expr, _ = parse_line(problem["answer_latex"])
     hooks = registry.get_hooks(problem.get("domain"))
 
+    # Multi-variable domains (e.g. systems) widen the symbol allowlist.
+    allowed = {var}
+    if hooks is not None and hooks.allowed_symbols is not None:
+        allowed = hooks.allowed_symbols(problem) or allowed
+
     exprs: list[sp.Basic | None] = []
     parsed_lines: list[dict] = []
     for raw in lines:
-        expr, err = parse_line(raw, {var})
+        expr, err = parse_line(raw, allowed)
         exprs.append(expr)
         parsed_lines.append(
             {
@@ -130,6 +135,27 @@ def check(problem: dict, lines: list[str]) -> dict:
                 "status": "ok" if expr is not None else "unparseable",
             }
         )
+
+    # Domains whose step semantics don't fit the anchor loop (systems of
+    # equations: a step is a consequence of ALL trusted lines) take over.
+    if hooks is not None and hooks.check_all is not None:
+        verdict = hooks.check_all(problem, exprs)
+        if verdict is not None:
+            divergent_line_index, final_answer_correct = verdict
+            all_parsed = all(e is not None for e in exprs)
+            correct = (
+                bool(exprs)
+                and divergent_line_index is None
+                and all_parsed
+                and final_answer_correct
+            )
+            return {
+                "correct": correct,
+                "divergent_line_index": divergent_line_index,
+                "final_answer_correct": final_answer_correct,
+                "form_ok": True,
+                "parsed_lines": parsed_lines,
+            }
 
     divergent_line_index: int | None = None
     anchor = prompt_expr  # last trusted line; starts at the problem statement

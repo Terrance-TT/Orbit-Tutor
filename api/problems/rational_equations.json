@@ -1,0 +1,26 @@
+[
+  {
+    "id": "rat-01",
+    "title": "Solve a rational equation",
+    "prompt_latex": "\\frac{x+1}{x-2}=3",
+    "answer_latex": "x=\\frac{7}{2}",
+    "skills": ["rational-equations", "algebra-2"],
+    "domain": "algebra2"
+  },
+  {
+    "id": "rat-02",
+    "title": "Clearing a denominator can add roots",
+    "prompt_latex": "\\frac{x^2}{x-1}=\\frac{1}{x-1}",
+    "answer_latex": "x=-1",
+    "skills": ["rational-equations", "extraneous-roots", "algebra-2"],
+    "domain": "algebra2"
+  },
+  {
+    "id": "rat-03",
+    "title": "Rational equation with a lone fraction",
+    "prompt_latex": "\\frac{3}{x}+\\frac{1}{2}=1",
+    "answer_latex": "x=6",
+    "skills": ["rational-equations", "algebra-2"],
+    "domain": "algebra2"
+  }
+]

@@ -1,0 +1,20 @@
+[
+  {
+    "id": "pdiv-01",
+    "title": "Divide a cubic by a binomial",
+    "prompt_latex": "\\frac{x^3+2x^2-5x-6}{x+1}",
+    "answer_latex": "x^2+x-6",
+    "skills": ["polynomial-division", "algebra-2"],
+    "domain": "algebra2",
+    "form": "simplified"
+  },
+  {
+    "id": "pdiv-02",
+    "title": "Divide a quadratic by a binomial",
+    "prompt_latex": "\\frac{x^2+7x+12}{x+3}",
+    "answer_latex": "x+4",
+    "skills": ["polynomial-division", "algebra-2"],
+    "domain": "algebra2",
+    "form": "simplified"
+  }
+]

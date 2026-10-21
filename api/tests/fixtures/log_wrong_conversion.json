@@ -1,0 +1,11 @@
+{
+  "name": "log_wrong_conversion",
+  "description": "log_3(x)=2 means x=3^2=9, not x=2^3=8; the wrong conversion diverges immediately",
+  "problem_id": "log-01",
+  "lines": ["x=2^3", "x=8"],
+  "expected": {
+    "correct": false,
+    "divergent_line_index": 0,
+    "final_answer_correct": false
+  }
+}

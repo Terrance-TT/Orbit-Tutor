@@ -24,6 +24,7 @@ from .mathpix_client import (
     get_client,
 )
 from .problems import get_problem, load_problems
+from .domains import registry
 from .schemas import (
     CheckRequest,
     CheckResponse,
@@ -95,8 +96,12 @@ def recognize(request: RecognizeRequest) -> dict:
                 detail=f"unknown problem {request.problem_id!r}",
             )
         var = checker.problem_variable(problem)
+        allowed = {var}
+        hooks = registry.get_hooks(problem.get("domain"))
+        if hooks is not None and hooks.allowed_symbols is not None:
+            allowed = hooks.allowed_symbols(problem) or allowed
         for line in lines:
-            _, err = checker.parse_line(line["latex"], {var})
+            _, err = checker.parse_line(line["latex"], allowed)
             if err:
                 # OCR confidence is not a plausibility check: a confidently
                 # wrong Greek letter should still be called out for review.

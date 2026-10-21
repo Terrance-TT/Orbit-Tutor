@@ -14,8 +14,13 @@ Rules beyond the core checker:
 - Polynomial inequality: for expression tasks, expand(a-b) != 0 as a
   polynomial PROVES non-equivalence (simplify alone can only prove equality),
   so wrong factor pairs are flagged divergent instead of "unknown".
-- Final-form gates ("form" in the problem JSON): factored / expanded /
-  simplified. An equivalent line in the wrong form is not complete.
+- Extraneous-prone steps: for radical or rational equations (squaring /
+  multiplying by a denominator can introduce roots), a transition whose
+  solution set GROWS is accepted; the final answer is still checked against
+  the problem's own set, so an extraneous root stated as an answer is caught.
+- Final-form gates ("form" in the problem JSON): factored (all Add factors
+  irreducible over the integers) / expanded / simplified. An equivalent line
+  in the wrong form is not complete.
 """
 
 from __future__ import annotations
@@ -45,6 +50,23 @@ def _problem_solution_set(problem: dict, var: sp.Symbol):
     return _solution_set(prompt, var)
 
 
+def _is_extraneous_prone(problem: dict) -> bool:
+    """True when valid algebra can grow the solution set: radicals (squaring
+    adds roots) or the variable in a denominator (clearing it adds roots)."""
+    prompt, err = checker.parse_line(problem["prompt_latex"])
+    if prompt is None or not isinstance(prompt, Equality):
+        return False
+    if prompt.has(sp.sqrt):
+        return True
+    for pow_ in prompt.atoms(sp.Pow):
+        base, exp = pow_.args
+        if exp.is_number and not exp.is_integer:  # fractional exponent == radical
+            return True
+        if exp.is_negative and base.free_symbols:  # variable in denominator
+            return True
+    return False
+
+
 def _transition_status(prev, curr, var, problem) -> str | None:
     """Domain transition rule; None defers to the core rule."""
     if isinstance(curr, Equality):
@@ -58,6 +80,13 @@ def _transition_status(prev, curr, var, problem) -> str | None:
         # valid step, checked against the problem's set rather than prev.
         if curr_set.is_subset(problem_set):
             return VALID
+        # Squaring a radical / clearing a denominator may introduce
+        # extraneous roots: accept a growing solution set; the final-answer
+        # check (against the problem's own set) catches the extra roots.
+        if _is_extraneous_prone(problem):
+            prev_set = _solution_set(prev, var)
+            if prev_set is not None and prev_set.is_subset(curr_set):
+                return VALID
         return None
     # Expression task: a nonzero polynomial difference proves the lines are
     # NOT equivalent — core simplify can only prove equivalence, never
@@ -102,17 +131,27 @@ def _final_answer_ok(exprs, answer_expr, var, problem) -> bool | None:
     return collected == answer_set
 
 
-def _is_factored(expr: sp.Basic) -> bool:
+def _is_factored(expr: sp.Basic, var: sp.Symbol) -> bool:
+    """Product of irreducible factors: Mul of Adds / Pow of Add, where every
+    Add factor is irreducible over the integers — (x^2-4)(x+3) does NOT
+    count, since x^2-4 factors further."""
     if isinstance(expr, sp.Pow):
-        base, exp = expr.args
-        return isinstance(base, sp.Add) and exp.is_number
-    if isinstance(expr, sp.Mul):
-        return any(
-            isinstance(a, sp.Add)
-            or (isinstance(a, sp.Pow) and isinstance(a.args[0], sp.Add))
-            for a in expr.args
-        )
-    return False
+        factors = [expr.args[0]]
+    elif isinstance(expr, sp.Mul):
+        factors = list(expr.args)
+    else:
+        return False
+    adds = [f for f in factors if isinstance(f, sp.Add)]
+    if not adds:
+        return False
+    for f in adds:
+        try:
+            _, factor_list = sp.factor_list(f, var)
+        except Exception:
+            return False
+        if len(factor_list) > 1:
+            return False
+    return True
 
 
 def _canon(expr: sp.Basic) -> sp.Basic:
@@ -159,12 +198,18 @@ def _final_form_ok(expr, problem) -> bool | None:
     form = problem.get("form")
     if form is None or isinstance(expr, Equality):
         return None
+    var = checker.problem_variable(problem)
     if form == "factored":
-        return _is_factored(expr)
+        try:
+            return _is_factored(expr, var)
+        except Exception:
+            return None
     if form == "expanded":
-        return not _is_factored(expr)
+        try:
+            return not _is_factored(expr, var)
+        except Exception:
+            return None
     if form == "simplified":
-        var = checker.problem_variable(problem)
         try:
             return _is_simplified(expr, var)
         except Exception:
@@ -176,6 +221,7 @@ _TASK_LABELS = {
     "factored": "rewrite an expression in fully factored form",
     "expanded": "rewrite an expression in expanded form",
     "simplified": "simplify an expression",
+    "solve": "solve an equation",
 }
 
 _COMMON_MISCONCEPTIONS = (
@@ -187,13 +233,32 @@ _COMMON_MISCONCEPTIONS = (
     "- Stopping at an equivalent expression that is not in the requested form."
 )
 
+_EXTRANEOUS_MISCONCEPTIONS = (
+    "- Forgetting that squaring both sides (or clearing a denominator) can "
+    "introduce extraneous roots — every candidate root must be substituted "
+    "back into the ORIGINAL equation.\n"
+    "- Sign errors when expanding the squared side, e.g. $(x-1)^2 \\neq x^2-1$.\n"
+    "- Log/exponential slips: $\\log_b(x)=c$ means $x=b^c$, and "
+    "$\\log$ requires a positive argument."
+)
+
 
 def _tutor_prompt_addendum(problem: dict) -> str:
     form = problem.get("form")
     if form is None:
-        task = "solve a quadratic equation (there may be two roots — the student may state them on separate lines)"
+        if _is_extraneous_prone(problem):
+            task = (
+                "solve a radical or rational equation (squaring or clearing a "
+                "denominator may introduce extraneous roots — the student must "
+                "check candidates against the original equation)"
+            )
+            misconceptions = _EXTRANEOUS_MISCONCEPTIONS
+        else:
+            task = "solve an equation (there may be two roots — the student may state them on separate lines)"
+            misconceptions = _COMMON_MISCONCEPTIONS
     else:
         task = _TASK_LABELS.get(form, f"put the answer in {form} form")
+        misconceptions = _COMMON_MISCONCEPTIONS
     return (
         "Domain context (Algebra 2):\n"
         f"- The task is to {task}.\n"
@@ -203,7 +268,7 @@ def _tutor_prompt_addendum(problem: dict) -> str:
         '"incomplete_form" for that case.\n'
         "- In addition to the standard error types, you may use "
         '"factoring_pair_error", "expansion_error", and "incomplete_form".\n'
-        "Common misconceptions in this domain:\n" + _COMMON_MISCONCEPTIONS
+        "Common misconceptions in this domain:\n" + misconceptions
     )
 
 

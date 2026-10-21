@@ -1,0 +1,11 @@
+{
+  "name": "absolute_value_branching",
+  "description": "|x-3|=5 splits into x-3=5 and x-3=-5; both roots stated on their own lines",
+  "problem_id": "abs-01",
+  "lines": ["x-3=5", "x=8", "x-3=-5", "x=-2"],
+  "expected": {
+    "correct": true,
+    "divergent_line_index": null,
+    "final_answer_correct": true
+  }
+}

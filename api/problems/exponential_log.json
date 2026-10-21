@@ -1,0 +1,34 @@
+[
+  {
+    "id": "exp-01",
+    "title": "Exponential with matching base",
+    "prompt_latex": "2^x=16",
+    "answer_latex": "x=4",
+    "skills": ["exponential-equations", "algebra-2"],
+    "domain": "algebra2"
+  },
+  {
+    "id": "exp-02",
+    "title": "Exponential with a shifted exponent",
+    "prompt_latex": "3^{x-1}=9",
+    "answer_latex": "x=3",
+    "skills": ["exponential-equations", "algebra-2"],
+    "domain": "algebra2"
+  },
+  {
+    "id": "log-01",
+    "title": "Logarithm to exponential form",
+    "prompt_latex": "\\log_3(x)=2",
+    "answer_latex": "x=9",
+    "skills": ["logarithms", "algebra-2"],
+    "domain": "algebra2"
+  },
+  {
+    "id": "log-02",
+    "title": "Natural log equation",
+    "prompt_latex": "\\ln(x)=0",
+    "answer_latex": "x=1",
+    "skills": ["logarithms", "algebra-2"],
+    "domain": "algebra2"
+  }
+]

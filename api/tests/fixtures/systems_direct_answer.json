@@ -1,0 +1,11 @@
+{
+  "name": "systems_direct_answer",
+  "description": "Stating x and y immediately is accepted: both are consequences of the solved system",
+  "problem_id": "sys-02",
+  "lines": ["x=3", "y=2"],
+  "expected": {
+    "correct": true,
+    "divergent_line_index": null,
+    "final_answer_correct": true
+  }
+}

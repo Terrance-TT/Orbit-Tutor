@@ -22,7 +22,7 @@ Deployed and working end-to-end:
 
 - **App (iPad or any browser):** https://web-production-b030b.up.railway.app
 - **API:** https://api-production-ea51.up.railway.app
-- Problem picker with **36 problems**: 19 Algebra 1 (one/two-step equations, distribution, combining like terms, simple factoring) + **17 Algebra 2** (quadratics incl. root branching and the quadratic formula, polynomial arithmetic/expansion, factoring expressions, expression simplification). Algebra 2 runs as a checker/tutor **domain plugin** (see §5) with its own problem files, rules, and prompt addendum.
+- Problem picker with **56 problems**: 19 Algebra 1 (one/two-step equations, distribution, combining like terms, simple factoring) + **37 Algebra 2** across two domain plugins (see §5): `algebra2` (quadratics incl. root branching and the quadratic formula, polynomial arithmetic/expansion, factoring incl. cubics, simplification, radical and rational equations with extraneous-root handling, exponential/log equations, absolute value, polynomial division) and `systems` (2x2 linear systems, checked by a consequence rule over the whole trusted prefix).
 - Full-screen Pencil-only writing with instant ink, rapid successive strokes work, palm/finger rejection.
 - Live Mathpix recognition with per-line reading confirmation (edit + confirm-all; low-confidence badges and problem-aware misread warnings).
 - Symbolic checking with divergent-line highlighting in the student's own work; quiet success state on correct answers.
@@ -48,11 +48,12 @@ Orbit/
 │   │   ├── tutor.py          # Kimi/Moonshot diagnosis client + prompt/parser + mock
 │   │   ├── domains/          # Domain plugins (checker/tutor hooks behind a lazy registry)
 │   │   │   ├── registry.py       # DomainHooks + lazy get_hooks(); unknown domain -> core
-│   │   │   └── algebra2.py       # Quadratics/polynomials/factoring/simplification rules
+│   │   │   ├── algebra2.py       # Single-variable rules (branching, extraneous, form gates)
+│   │   │   └── systems.py        # 2x2 linear systems: consequence-rule checker (check_all)
 │   │   ├── problems.py       # Problem bank loader
 │   │   └── schemas.py        # Pydantic API models
-│   ├── problems/         # 9 JSON files, 36 problems total (4 algebra-2 files)
-│   ├── tests/            # pytest: 44 tests incl. checker fixtures + tutor + algebra-2 tests
+│   ├── problems/         # 16 JSON files, 56 problems total (11 algebra-2 files)
+│   ├── tests/            # pytest: 71 tests incl. checker fixtures + tutor + domain tests
 │   ├── requirements.txt
 │   └── Dockerfile
 ├── web/                  # Next.js 16.4 (App Router, Turbopack) + React 19 + TS + Tailwind v4
@@ -95,7 +96,7 @@ cd web && npm install && npm run dev                                      # http
 
 **Checks before committing:**
 ```bash
-cd api && .venv/bin/python -m pytest tests/ -q     # expect 44 passed
+cd api && .venv/bin/python -m pytest tests/ -q     # expect 71 passed
 cd web && npm run lint && npm run build            # expect clean
 ```
 
@@ -136,7 +137,10 @@ Deploying from the repo root uploads the whole monorepo and Railpack fails — a
 - *Root branching:* an equation line whose solution set is a non-empty subset of the problem's own solution set is valid — so two-root quadratics can be solved one root per line (`x=-2` then `x=3`). Final answer = union of strict-subset branch lines equals the answer set, or the last line's set matches outright.
 - *Polynomial inequality:* for expression tasks, a nonzero polynomial `expand(a-b)` proves non-equivalence (simplify alone can only prove equality), so wrong factor pairs diverge instead of going `unknown`.
 - *Form gates* via `"form"` in the problem JSON: `"factored"` (Mul of Adds / Pow of Add), `"expanded"` (no factored shape), `"simplified"` (like terms collected + canon-equal to `simplify(expr)`; the canon round-trip via `sstr`/`sympify` neutralizes antlr's nested-Add parse shape). Failure → `form_ok: false` + last line marked divergent, so the correction flow and `/diagnose` still work.
-- Two-root quadratic `answer_latex` is encoded as a factored equation (`(x+2)(x-3)=0`); `"x=-2 \text{ or } x=3"` does not parse. **Parser quirk:** `3x(x+2)` is read as function application `x(x+2)` — write GCF answers with a power base (`x^2(x+2)`) or an explicit `\cdot`.
+- Two-root quadratic `answer_latex` is encoded as a factored equation (`(x+2)(x-3)=0`); `"x=-2 \text{ or } x=3"` does not parse. **Parser quirk:** `3x(x+2)` is read as function application `x(x+2)` — write GCF answers with a power base (`x^2(x+2)`) or an explicit `\cdot`. Absolute value parses with plain bars (`|x-3|=5`) but NOT `\left|...\right|`.
+- *Extraneous-prone transitions:* when the prompt is a radical or rational equation (radical or variable-in-denominator detected automatically), a transition whose solution set GROWS is accepted (squaring/clearing can add roots); the final answer is still checked against the problem's own set, so stating an extraneous root diverges.
+
+**Systems domain (`domains/systems.py`):** 2x2 linear systems don't fit the anchor loop (a step follows from ALL trusted lines, not the previous one), so the domain takes over via `check_all`: each line must be linear in x,y; a line is valid iff its coefficient row (a,b,c) lies in the span of the trusted rows (rank does not increase) — exactly what adding multiples of equations produces. First rank-raising line is divergent. Final answer requires the student's own rows to pin both variables ((a,0,c) for x and (0,b,c) for y) matching the answer point. Systems problems carry machine fields `equations` / `answer_equations`; `prompt_latex` is a KaTeX-only `\begin{cases}` display string (antlr can't parse it). The domain also widens the parse allowlist via `allowed_symbols` → {x, y} (used by both `/check` and `/recognize` warnings).
 
 **Mathpix client (`mathpix_client.py`):**
 - Request: `POST https://api.mathpix.com/v3/text` with `app_id`/`app_key` headers, body `{src: dataURL, formats: ["text", "latex_styled"], include_line_data: true}`. **`include_line_data` is top-level** — nesting it under `data_options` silently breaks parsing.
@@ -174,7 +178,7 @@ Deploying from the repo root uploads the whole monorepo and Railpack fails — a
 
 ## 8. What to build next (in priority order)
 
-1. ~~Expand math coverage~~ **Partially done:** domain-plugin framework (`api/app/domains/`) + Algebra 2 (quadratics, polynomial arithmetic, factoring, simplification) with fixtures and domain tutor prompts. Next via the same interface: systems of equations. Trig/calculus later (LaTeX parsing gets fragile). Word problems/geometry/proofs need an LLM-based checker, not SymPy.
+1. ~~Expand math coverage~~ **Done for Algebra 2:** domain-plugin framework (`api/app/domains/`) with `algebra2` (quadratics, polynomial arithmetic, factoring incl. cubics, simplification, radical/rational equations, exp/log, absolute value, polynomial division) and `systems` (2x2 linear). Remaining: 3D/nonlinear systems, trig/calculus (LaTeX parsing gets fragile), inequalities (interval answers don't parse). Word problems/geometry/proofs need an LLM-based checker, not SymPy.
 2. **Follow-up verification problem** after a fix, then learner-aware next-step routing (practice/video/drill/next) once the main math domains are covered.
 3. **Explanation-style escalation and self-correction first** — where appropriate, tell the student an error exists between lines N–M before showing the full diagnosis; if one explanation style doesn't land, try another (visual, numeric example, analogy).
 4. **Learner model** (misconception log, explanation-style preferences) — needs a database (none yet; all state is client-side + localStorage). Deliberately deferred until domain coverage is in place.

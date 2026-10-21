@@ -1,0 +1,11 @@
+{
+  "name": "rational_extraneous_root_caught",
+  "description": "Clearing the denominator of x^2/(x-1)=1/(x-1) gives x=±1; x=1 is extraneous and diverges",
+  "problem_id": "rat-02",
+  "lines": ["x^2=1", "x=1"],
+  "expected": {
+    "correct": false,
+    "divergent_line_index": 1,
+    "final_answer_correct": false
+  }
+}

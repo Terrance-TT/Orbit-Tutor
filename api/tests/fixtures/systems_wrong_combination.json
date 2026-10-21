@@ -1,0 +1,11 @@
+{
+  "name": "systems_wrong_combination",
+  "description": "Adding x+y=5 and x-y=1 gives 2x=6, not 2x=8: the bad combination diverges",
+  "problem_id": "sys-01",
+  "lines": ["x+y=5", "x-y=1", "2x=8", "x=4"],
+  "expected": {
+    "correct": false,
+    "divergent_line_index": 2,
+    "final_answer_correct": false
+  }
+}

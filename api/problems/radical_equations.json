@@ -1,0 +1,26 @@
+[
+  {
+    "id": "rad-01",
+    "title": "Solve a radical equation",
+    "prompt_latex": "\\sqrt{x+3}=5",
+    "answer_latex": "x=22",
+    "skills": ["radical-equations", "algebra-2"],
+    "domain": "algebra2"
+  },
+  {
+    "id": "rad-02",
+    "title": "Squaring can add roots",
+    "prompt_latex": "\\sqrt{2x+1}=x-1",
+    "answer_latex": "x=4",
+    "skills": ["radical-equations", "extraneous-roots", "algebra-2"],
+    "domain": "algebra2"
+  },
+  {
+    "id": "rad-03",
+    "title": "Radical equal to a constant",
+    "prompt_latex": "\\sqrt{3x-2}=4",
+    "answer_latex": "x=6",
+    "skills": ["radical-equations", "algebra-2"],
+    "domain": "algebra2"
+  }
+]

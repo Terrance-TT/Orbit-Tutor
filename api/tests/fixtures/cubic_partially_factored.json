@@ -1,0 +1,12 @@
+{
+  "name": "cubic_partially_factored",
+  "description": "(x^2-4)(x+3) is equivalent but x^2-4 factors further: form gate flags the final line",
+  "problem_id": "hd-02",
+  "lines": ["x^2(x+3)-4(x+3)", "(x^2-4)(x+3)"],
+  "expected": {
+    "correct": false,
+    "divergent_line_index": 1,
+    "final_answer_correct": true,
+    "form_ok": false
+  }
+}

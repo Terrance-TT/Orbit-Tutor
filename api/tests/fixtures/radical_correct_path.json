@@ -1,0 +1,11 @@
+{
+  "name": "radical_correct_path",
+  "description": "Square both sides of sqrt(x+3)=5 and solve; equal solution sets throughout",
+  "problem_id": "rad-01",
+  "lines": ["x+3=25", "x=22"],
+  "expected": {
+    "correct": true,
+    "divergent_line_index": null,
+    "final_answer_correct": true
+  }
+}

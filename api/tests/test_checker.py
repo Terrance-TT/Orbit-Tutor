@@ -70,10 +70,22 @@ def test_unparseable_line_status_is_distinct_from_invalid():
 
 
 def test_parse_coverage_of_problem_bank():
-    """Every prompt and answer in the bank must parse through the one parsing entry point."""
+    """Every prompt and answer in the bank must parse through the one parsing entry point.
+
+    Systems problems carry a KaTeX display prompt (\\begin{cases}...) that
+    antlr cannot read; their machine-checkable math lives in the
+    "equations"/"answer_equations" fields instead.
+    """
     problems = load_problems()
     assert len(problems) >= 15
     for problem in problems:
+        if "equations" in problem:
+            for latex in problem["equations"] + problem["answer_equations"]:
+                expr, err = checker.parse_line(latex)
+                assert expr is not None, (
+                    f"{problem['id']} equation {latex!r} failed to parse: {err}"
+                )
+            continue
         expr, err = checker.parse_line(problem["prompt_latex"])
         assert expr is not None, f"{problem['id']} prompt failed to parse: {err}"
         expr, err = checker.parse_line(problem["answer_latex"])

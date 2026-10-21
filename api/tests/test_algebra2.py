@@ -78,6 +78,39 @@ def test_factored_gate():
     assert HOOKS.final_form_ok(_parse("x^2+5x+6"), problem) is False
 
 
+def test_factored_gate_requires_irreducible_factors():
+    problem = get_problem("hd-02")  # x^3+3x^2-4x-12
+    assert HOOKS.final_form_ok(_parse("(x+2)(x-2)(x+3)"), problem) is True
+    # x^2-4 factors further — equivalent but not FULLY factored
+    assert HOOKS.final_form_ok(_parse("(x^2-4)(x+3)"), problem) is False
+
+
+def test_extraneous_prone_detection():
+    from app.domains.algebra2 import _is_extraneous_prone
+
+    assert _is_extraneous_prone(get_problem("rad-01")) is True
+    assert _is_extraneous_prone(get_problem("rat-02")) is True
+    assert _is_extraneous_prone(get_problem("quad-01")) is False
+    assert _is_extraneous_prone(get_problem("exp-01")) is False
+
+
+def test_superset_transition_allowed_for_radicals():
+    problem = get_problem("rad-02")  # sqrt(2x+1)=x-1, true root {4}
+    var = checker.problem_variable(problem)
+    prev = _parse("\\sqrt{2x+1}=x-1")
+    squared = _parse("2x+1=(x-1)^2")  # solution set grows to {0, 4}
+    assert HOOKS.transition_status(prev, squared, var, problem) == "valid"
+
+
+def test_superset_transition_rejected_for_plain_quadratics():
+    problem = get_problem("quad-01")
+    var = checker.problem_variable(problem)
+    prev = _parse("x^2-x-6=0")
+    grown = _parse("(x+2)(x-3)(x-5)=0")  # superset of roots, no radical excuse
+    assert HOOKS.transition_status(prev, grown, var, problem) is None
+    assert checker._transition_status(prev, grown, var) == "invalid"
+
+
 def test_expanded_gate():
     problem = get_problem("poly-01")
     assert HOOKS.final_form_ok(_parse("x^2+5x+6"), problem) is True

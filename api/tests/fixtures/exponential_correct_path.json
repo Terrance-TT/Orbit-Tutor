@@ -1,0 +1,11 @@
+{
+  "name": "exponential_correct_path",
+  "description": "Rewrite 16 as 2^4 and equate exponents",
+  "problem_id": "exp-01",
+  "lines": ["2^x=2^4", "x=4"],
+  "expected": {
+    "correct": true,
+    "divergent_line_index": null,
+    "final_answer_correct": true
+  }
+}

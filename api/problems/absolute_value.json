@@ -1,0 +1,18 @@
+[
+  {
+    "id": "abs-01",
+    "title": "Absolute value equation",
+    "prompt_latex": "|x-3|=5",
+    "answer_latex": "(x-8)(x+2)=0",
+    "skills": ["absolute-value", "algebra-2"],
+    "domain": "algebra2"
+  },
+  {
+    "id": "abs-02",
+    "title": "Absolute value with a coefficient",
+    "prompt_latex": "|2x+1|=7",
+    "answer_latex": "(x-3)(x+4)=0",
+    "skills": ["absolute-value", "algebra-2"],
+    "domain": "algebra2"
+  }
+]

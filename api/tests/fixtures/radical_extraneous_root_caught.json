@@ -1,0 +1,11 @@
+{
+  "name": "radical_extraneous_root_caught",
+  "description": "Squaring sqrt(2x+1)=x-1 is valid though the solution set grows; stating the extraneous root x=0 diverges (the student later states the valid root, so the final line itself matches)",
+  "problem_id": "rad-02",
+  "lines": ["2x+1=(x-1)^2", "x^2-4x=0", "x=0", "x=4"],
+  "expected": {
+    "correct": false,
+    "divergent_line_index": 2,
+    "final_answer_correct": true
+  }
+}

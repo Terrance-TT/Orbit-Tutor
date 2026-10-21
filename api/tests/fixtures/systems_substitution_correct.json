@@ -1,0 +1,11 @@
+{
+  "name": "systems_substitution_correct",
+  "description": "Substitute y=2x+1 into 3x+y=11, solve for x, back-substitute for y",
+  "problem_id": "sys-04",
+  "lines": ["3x+2x+1=11", "5x=10", "x=2", "y=5"],
+  "expected": {
+    "correct": true,
+    "divergent_line_index": null,
+    "final_answer_correct": true
+  }
+}

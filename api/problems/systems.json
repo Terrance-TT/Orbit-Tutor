@@ -1,0 +1,42 @@
+[
+  {
+    "id": "sys-01",
+    "title": "Solve the system (elimination)",
+    "prompt_latex": "\\begin{cases}x+y=5\\\\x-y=1\\end{cases}",
+    "answer_latex": "x=3,\\ y=2",
+    "skills": ["systems", "elimination", "algebra-2"],
+    "domain": "systems",
+    "equations": ["x+y=5", "x-y=1"],
+    "answer_equations": ["x=3", "y=2"]
+  },
+  {
+    "id": "sys-02",
+    "title": "Elimination with a multiplier",
+    "prompt_latex": "\\begin{cases}2x+3y=12\\\\x-y=1\\end{cases}",
+    "answer_latex": "x=3,\\ y=2",
+    "skills": ["systems", "elimination", "algebra-2"],
+    "domain": "systems",
+    "equations": ["2x+3y=12", "x-y=1"],
+    "answer_equations": ["x=3", "y=2"]
+  },
+  {
+    "id": "sys-03",
+    "title": "Subtract the equations",
+    "prompt_latex": "\\begin{cases}3x+2y=16\\\\x+2y=8\\end{cases}",
+    "answer_latex": "x=4,\\ y=2",
+    "skills": ["systems", "elimination", "algebra-2"],
+    "domain": "systems",
+    "equations": ["3x+2y=16", "x+2y=8"],
+    "answer_equations": ["x=4", "y=2"]
+  },
+  {
+    "id": "sys-04",
+    "title": "Substitution-friendly system",
+    "prompt_latex": "\\begin{cases}y=2x+1\\\\3x+y=11\\end{cases}",
+    "answer_latex": "x=2,\\ y=5",
+    "skills": ["systems", "substitution", "algebra-2"],
+    "domain": "systems",
+    "equations": ["y=2x+1", "3x+y=11"],
+    "answer_equations": ["x=2", "y=5"]
+  }
+]
