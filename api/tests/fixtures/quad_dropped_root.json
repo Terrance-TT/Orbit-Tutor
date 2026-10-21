@@ -1,0 +1,11 @@
+{
+  "name": "quad_dropped_root",
+  "description": "Factored correctly but only one root stated: the branch line is marked as where coverage was lost",
+  "problem_id": "quad-01",
+  "lines": ["x^2-x-6=0", "(x+2)(x-3)=0", "x=-2"],
+  "expected": {
+    "correct": false,
+    "divergent_line_index": 2,
+    "final_answer_correct": false
+  }
+}

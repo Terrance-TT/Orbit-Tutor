@@ -201,6 +201,22 @@ def check(problem: dict, lines: list[str]) -> dict:
             if divergent_line_index is None:
                 divergent_line_index = len(lines) - 1
 
+    # Dropped-case detection: every line valid but the final answer
+    # incomplete (e.g. one case of |2x+1|=7 never explored). The domain
+    # names the line where coverage was lost so the correction flow and
+    # /diagnose have something to point at instead of dead-ending.
+    if (
+        divergent_line_index is None
+        and not final_answer_correct
+        and exprs
+        and all(e is not None for e in exprs)
+        and hooks is not None
+        and hooks.incomplete_answer is not None
+    ):
+        hit = hooks.incomplete_answer(problem, exprs)
+        if hit is not None:
+            divergent_line_index = hit["line_index"]
+
     all_parsed = all(e is not None for e in exprs)
     correct = (
         bool(exprs)

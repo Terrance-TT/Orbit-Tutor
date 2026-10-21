@@ -106,6 +106,44 @@ def _transition_status(prev, curr, var, problem) -> str | None:
     return "invalid"  # nonzero polynomial difference: provably not equivalent
 
 
+def _incomplete_answer(problem, exprs) -> dict | None:
+    """Dropped-case detection for multi-solution equations.
+
+    When every line is valid but the branch union doesn't cover the answer
+    set (e.g. |2x+1|=7 solved only via 2x+1=7, never 2x+1=-7), no transition
+    is invalid — so without this hook there is no divergent line and no
+    diagnosis. Returns the first line that committed to a strict subset of
+    the answer set — the point where the other case was dropped.
+    """
+    if problem.get("form") is not None:
+        return None  # expression tasks: the form gate owns incompleteness
+    answer, err = checker.parse_line(problem["answer_latex"])
+    if answer is None or not isinstance(answer, Equality):
+        return None
+    var = checker.problem_variable(problem)
+    answer_set = _solution_set(answer, var)
+    if not isinstance(answer_set, sp.sets.sets.FiniteSet) or len(answer_set) < 2:
+        return None  # single-root problems: incompleteness is just unfinished
+    branch_indices: list[int] = []
+    collected = sp.S.EmptySet
+    for i, expr in enumerate(exprs):
+        s = _solution_set(expr, var)
+        if s is None or s == sp.S.EmptySet or s == answer_set:
+            continue
+        if s.is_subset(answer_set):
+            collected = collected.union(s)
+            branch_indices.append(i)
+    if not branch_indices or collected == answer_set:
+        return None
+    return {
+        "line_index": branch_indices[0],
+        "note": (
+            "this line is valid, but it follows only one case — the equation "
+            "has another solution that the work never covers"
+        ),
+    }
+
+
 def _final_answer_ok(exprs, answer_expr, var, problem) -> bool | None:
     """Branch-union final answer for equation answers; None defers to core."""
     if not isinstance(answer_expr, Equality):
@@ -278,6 +316,7 @@ HOOKS = DomainHooks(
     final_answer_ok=_final_answer_ok,
     final_form_ok=_final_form_ok,
     tutor_prompt_addendum=_tutor_prompt_addendum,
+    incomplete_answer=_incomplete_answer,
     extra_error_types=frozenset(
         {"factoring_pair_error", "expansion_error", "incomplete_form"}
     ),

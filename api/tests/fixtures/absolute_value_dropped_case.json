@@ -1,0 +1,11 @@
+{
+  "name": "absolute_value_dropped_case",
+  "description": "|2x+1|=7 solved only via the positive case: every line is valid, but x=-4 is missing. The line that committed to one case is marked so the tutor can explain.",
+  "problem_id": "abs-02",
+  "lines": ["|2x+1|=7", "2x=6", "x=3"],
+  "expected": {
+    "correct": false,
+    "divergent_line_index": 1,
+    "final_answer_correct": false
+  }
+}

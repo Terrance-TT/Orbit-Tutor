@@ -96,7 +96,7 @@ cd web && npm install && npm run dev                                      # http
 
 **Checks before committing:**
 ```bash
-cd api && .venv/bin/python -m pytest tests/ -q     # expect 71 passed
+cd api && .venv/bin/python -m pytest tests/ -q     # expect 77 passed
 cd web && npm run lint && npm run build            # expect clean
 ```
 
@@ -139,6 +139,7 @@ Deploying from the repo root uploads the whole monorepo and Railpack fails — a
 - *Form gates* via `"form"` in the problem JSON: `"factored"` (Mul of Adds / Pow of Add), `"expanded"` (no factored shape), `"simplified"` (like terms collected + canon-equal to `simplify(expr)`; the canon round-trip via `sstr`/`sympify` neutralizes antlr's nested-Add parse shape). Failure → `form_ok: false` + last line marked divergent, so the correction flow and `/diagnose` still work.
 - Two-root quadratic `answer_latex` is encoded as a factored equation (`(x+2)(x-3)=0`); `"x=-2 \text{ or } x=3"` does not parse. **Parser quirk:** `3x(x+2)` is read as function application `x(x+2)` — write GCF answers with a power base (`x^2(x+2)`) or an explicit `\cdot`. Absolute value parses with plain bars (`|x-3|=5`) but NOT `\left|...\right|`.
 - *Extraneous-prone transitions:* when the prompt is a radical or rational equation (radical or variable-in-denominator detected automatically), a transition whose solution set GROWS is accepted (squaring/clearing can add roots); the final answer is still checked against the problem's own set, so stating an extraneous root diverges.
+- *Dropped-case detection (`incomplete_answer` hook):* when every line is valid but the final answer is incomplete for a multi-solution equation (e.g. |2x+1|=7 solved only via the positive case), there is no invalid transition — so the hook names the first line that committed to a strict subset of the answer set and the checker reports it as divergent. The tutor marker reads "this line is valid, but it follows only one case…". Single-root problems never fire it (incompleteness there is just unfinished work).
 
 **Systems domain (`domains/systems.py`):** 2x2 linear systems don't fit the anchor loop (a step follows from ALL trusted lines, not the previous one), so the domain takes over via `check_all`: each line must be linear in x,y; a line is valid iff its coefficient row (a,b,c) lies in the span of the trusted rows (rank does not increase) — exactly what adding multiples of equations produces. First rank-raising line is divergent. Final answer requires the student's own rows to pin both variables ((a,0,c) for x and (0,b,c) for y) matching the answer point. Systems problems carry machine fields `equations` / `answer_equations`; `prompt_latex` is a KaTeX-only `\begin{cases}` display string (antlr can't parse it). The domain also widens the parse allowlist via `allowed_symbols` → {x, y} (used by both `/check` and `/recognize` warnings).
 

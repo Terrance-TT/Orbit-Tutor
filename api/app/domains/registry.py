@@ -31,6 +31,11 @@ class DomainHooks:
         Full takeover for domains whose step semantics don't fit the
         core anchor loop (e.g. systems of equations, where a step is valid
         as a consequence of ALL trusted lines, not just the previous one).
+    incomplete_answer(problem, exprs) -> {"line_index": int, "note": str} | None
+        Used when every line is valid but the final answer is incomplete
+        (e.g. a dropped case of an absolute-value equation): names the line
+        where coverage was lost so the tutor and correction flow can point
+        at it instead of dead-ending with "no divergent line".
     """
 
     name: str
@@ -40,6 +45,7 @@ class DomainHooks:
     tutor_prompt_addendum: Callable | None = None
     allowed_symbols: Callable | None = None
     check_all: Callable | None = None
+    incomplete_answer: Callable | None = None
     extra_error_types: frozenset = field(default_factory=frozenset)
 
 

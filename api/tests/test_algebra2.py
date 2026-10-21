@@ -111,6 +111,41 @@ def test_superset_transition_rejected_for_plain_quadratics():
     assert checker._transition_status(prev, grown, var) == "invalid"
 
 
+# --- dropped-case detection (incomplete answer) ---------------------------
+
+
+def test_dropped_case_marks_branch_line():
+    """Every line valid, but one case missing: the line that committed to a
+    strict subset is marked so /diagnose and the correction flow can engage."""
+    problem = get_problem("abs-02")  # |2x+1|=7, answers x=3 and x=-4
+    result = checker.check(problem, ["|2x+1|=7", "2x=6", "x=3"])
+    assert result["divergent_line_index"] == 1
+    assert result["correct"] is False
+
+
+def test_dropped_case_none_when_all_cases_covered():
+    problem = get_problem("abs-02")
+    result = checker.check(problem, ["2x+1=7", "x=3", "2x+1=-7", "x=-4"])
+    assert result["correct"] is True
+
+
+def test_dropped_case_does_not_fire_for_single_root_problems():
+    from app.domains.algebra2 import _incomplete_answer
+
+    problem = get_problem("quad-03")  # x=5 only
+    result = checker.check(problem, ["x^2-10x+25=0", "(x-5)^2=0", "x=5"])
+    assert result["correct"] is True
+    # the hook itself refuses single-root problems outright
+    assert _incomplete_answer(problem, [_parse("(x-5)^2=0")]) is None
+
+
+def test_build_messages_marks_dropped_case():
+    problem = get_problem("abs-02")
+    user = build_messages(problem, ["|2x+1|=7", "2x=6", "x=3"], 1)[1]["content"]
+    assert "another solution" in user
+    assert "FIRST WRONG LINE" in user
+
+
 def test_expanded_gate():
     problem = get_problem("poly-01")
     assert HOOKS.final_form_ok(_parse("x^2+5x+6"), problem) is True

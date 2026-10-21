@@ -68,12 +68,18 @@ def build_messages(
     problem: dict, lines: list[str], divergent_line_index: int
 ) -> list[dict]:
     hooks = registry.get_hooks(problem.get("domain"))
+    incomplete = None
+    if hooks is not None and hooks.incomplete_answer is not None:
+        exprs = [checker.parse_line(line)[0] for line in lines]
+        incomplete = hooks.incomplete_answer(problem, exprs)
     numbered = []
     for i, line in enumerate(lines):
         marker = ""
         if i == divergent_line_index:
             marker = "   <-- FIRST WRONG LINE"
-            if (
+            if incomplete is not None and incomplete["line_index"] == i:
+                marker += f" ({incomplete['note']})"
+            elif (
                 hooks is not None
                 and hooks.final_form_ok is not None
                 and i == len(lines) - 1
