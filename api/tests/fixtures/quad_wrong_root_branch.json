@@ -1,0 +1,11 @@
+{
+  "name": "quad_wrong_root_branch",
+  "description": "Root branch that is not a root of the problem diverges at that line",
+  "problem_id": "quad-01",
+  "lines": ["x^2-x-6=0", "(x+2)(x-3)=0", "x=2", "x=3"],
+  "expected": {
+    "correct": false,
+    "divergent_line_index": 2,
+    "final_answer_correct": false
+  }
+}

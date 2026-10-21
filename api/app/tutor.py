@@ -16,6 +16,9 @@ from typing import Protocol
 
 import httpx
 
+from . import checker
+from .domains import registry
+
 DEFAULT_BASE_URL = "https://api.moonshot.ai/v1"
 DEFAULT_MODEL = "kimi-k2.6"
 
@@ -64,23 +67,41 @@ class TutorError(RuntimeError):
 def build_messages(
     problem: dict, lines: list[str], divergent_line_index: int
 ) -> list[dict]:
+    hooks = registry.get_hooks(problem.get("domain"))
     numbered = []
     for i, line in enumerate(lines):
-        marker = "   <-- FIRST WRONG LINE" if i == divergent_line_index else ""
+        marker = ""
+        if i == divergent_line_index:
+            marker = "   <-- FIRST WRONG LINE"
+            if (
+                hooks is not None
+                and hooks.final_form_ok is not None
+                and i == len(lines) - 1
+            ):
+                expr, err = checker.parse_line(line)
+                if expr is not None and hooks.final_form_ok(expr, problem) is False:
+                    marker += " (final answer not in the requested form)"
         numbered.append(f"Line {i + 1}: {line}{marker}")
     user = USER_TEMPLATE.format(
         prompt=problem["prompt_latex"],
         answer=problem["answer_latex"],
         numbered_lines="\n".join(numbered),
     )
+    if hooks is not None and hooks.tutor_prompt_addendum is not None:
+        user += "\n" + hooks.tutor_prompt_addendum(problem)
     return [
         {"role": "system", "content": SYSTEM_PROMPT},
         {"role": "user", "content": user},
     ]
 
 
-def parse_diagnosis(text: str) -> dict:
-    """Extract and validate the JSON diagnosis from raw model output."""
+def parse_diagnosis(text: str, allowed_types: set[str] | None = None) -> dict:
+    """Extract and validate the JSON diagnosis from raw model output.
+
+    allowed_types defaults to the base ERROR_TYPES; domains can extend the
+    set (e.g. algebra2's factoring_pair_error). Unknown types map to "other".
+    """
+    allowed = allowed_types if allowed_types is not None else ERROR_TYPES
     start = text.find("{")
     end = text.rfind("}")
     if start == -1 or end == -1 or end <= start:
@@ -90,7 +111,7 @@ def parse_diagnosis(text: str) -> dict:
     except json.JSONDecodeError as exc:
         raise TutorError(f"tutor returned invalid JSON: {exc}") from exc
     error_type = data.get("error_type")
-    if error_type not in ERROR_TYPES:
+    if error_type not in allowed:
         error_type = "other"
     return {
         "error_type": error_type,
@@ -98,6 +119,13 @@ def parse_diagnosis(text: str) -> dict:
         "explanation": str(data.get("explanation") or ""),
         "fix_hint": str(data.get("fix_hint") or ""),
     }
+
+
+def _allowed_error_types(problem: dict) -> set[str]:
+    hooks = registry.get_hooks(problem.get("domain"))
+    if hooks is None:
+        return ERROR_TYPES
+    return ERROR_TYPES | set(hooks.extra_error_types)
 
 
 class TutorClient(Protocol):
@@ -160,7 +188,7 @@ class KimiTutorClient:
             content = response.json()["choices"][0]["message"]["content"]
         except (KeyError, IndexError) as exc:
             raise TutorError("tutor API returned an unexpected response shape") from exc
-        return parse_diagnosis(content)
+        return parse_diagnosis(content, _allowed_error_types(problem))
 
 
 @lru_cache(maxsize=1)

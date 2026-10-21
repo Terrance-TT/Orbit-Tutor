@@ -1,0 +1,42 @@
+[
+  {
+    "id": "quad-01",
+    "title": "Solve by factoring",
+    "prompt_latex": "x^2-x-6=0",
+    "answer_latex": "(x+2)(x-3)=0",
+    "skills": ["quadratics", "factoring", "algebra-2"],
+    "domain": "algebra2"
+  },
+  {
+    "id": "quad-02",
+    "title": "Two negative roots",
+    "prompt_latex": "x^2+5x+6=0",
+    "answer_latex": "(x+2)(x+3)=0",
+    "skills": ["quadratics", "factoring", "algebra-2"],
+    "domain": "algebra2"
+  },
+  {
+    "id": "quad-03",
+    "title": "Repeated root",
+    "prompt_latex": "x^2-10x+25=0",
+    "answer_latex": "x=5",
+    "skills": ["quadratics", "perfect-squares", "algebra-2"],
+    "domain": "algebra2"
+  },
+  {
+    "id": "quad-04",
+    "title": "Rearrange to zero first",
+    "prompt_latex": "x^2=3x+10",
+    "answer_latex": "(x-5)(x+2)=0",
+    "skills": ["quadratics", "rearranging", "algebra-2"],
+    "domain": "algebra2"
+  },
+  {
+    "id": "quad-05",
+    "title": "Quadratic formula practice",
+    "prompt_latex": "2x^2-7x+3=0",
+    "answer_latex": "(x-3)(2x-1)=0",
+    "skills": ["quadratics", "quadratic-formula", "algebra-2"],
+    "domain": "algebra2"
+  }
+]

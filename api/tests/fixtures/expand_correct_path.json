@@ -1,0 +1,11 @@
+{
+  "name": "expand_correct_path",
+  "description": "Expand (x+2)(x+3) with an uncollected intermediate line, then the final expanded form",
+  "problem_id": "poly-01",
+  "lines": ["x^2+2x+3x+6", "x^2+5x+6"],
+  "expected": {
+    "correct": true,
+    "divergent_line_index": null,
+    "final_answer_correct": true
+  }
+}

@@ -1,0 +1,38 @@
+[
+  {
+    "id": "simp-01",
+    "title": "Combine like terms",
+    "prompt_latex": "3x+2x-5+1",
+    "answer_latex": "5x-4",
+    "skills": ["simplification", "combining-like-terms", "algebra-2"],
+    "domain": "algebra2",
+    "form": "simplified"
+  },
+  {
+    "id": "simp-02",
+    "title": "Cancel a common factor",
+    "prompt_latex": "\\frac{x^2-4}{x-2}",
+    "answer_latex": "x+2",
+    "skills": ["simplification", "rational-expressions", "algebra-2"],
+    "domain": "algebra2",
+    "form": "simplified"
+  },
+  {
+    "id": "simp-03",
+    "title": "Distribute then combine",
+    "prompt_latex": "2(x-3)+4x",
+    "answer_latex": "6x-6",
+    "skills": ["simplification", "distribution", "algebra-2"],
+    "domain": "algebra2",
+    "form": "simplified"
+  },
+  {
+    "id": "simp-04",
+    "title": "Subtract a parenthesized group",
+    "prompt_latex": "4x-(x-7)",
+    "answer_latex": "3x+7",
+    "skills": ["simplification", "sign-rules", "algebra-2"],
+    "domain": "algebra2",
+    "form": "simplified"
+  }
+]

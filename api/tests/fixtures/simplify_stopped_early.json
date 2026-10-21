@@ -1,0 +1,12 @@
+{
+  "name": "simplify_stopped_early",
+  "description": "Constants not yet combined: equivalent but not simplified, form gate flags the final line",
+  "problem_id": "simp-01",
+  "lines": ["5x-5+1"],
+  "expected": {
+    "correct": false,
+    "divergent_line_index": 0,
+    "final_answer_correct": true,
+    "form_ok": false
+  }
+}

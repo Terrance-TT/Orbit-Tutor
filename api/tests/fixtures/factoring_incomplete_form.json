@@ -1,0 +1,12 @@
+{
+  "name": "factoring_incomplete_form",
+  "description": "Restating the expression is equivalent but not factored: form gate flags the final line",
+  "problem_id": "a2fact-01",
+  "lines": ["x^2+5x+6"],
+  "expected": {
+    "correct": false,
+    "divergent_line_index": 0,
+    "final_answer_correct": true,
+    "form_ok": false
+  }
+}

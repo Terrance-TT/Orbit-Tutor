@@ -1,0 +1,11 @@
+{
+  "name": "expand_sign_error",
+  "description": "Binomial square with wrong sign on the constant term diverges immediately",
+  "problem_id": "poly-04",
+  "lines": ["4x^2-12x-9"],
+  "expected": {
+    "correct": false,
+    "divergent_line_index": 0,
+    "final_answer_correct": false
+  }
+}

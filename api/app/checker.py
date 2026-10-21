@@ -14,6 +14,8 @@ import sympy as sp
 from sympy.core.relational import Equality
 from sympy.parsing.latex import parse_latex
 
+from .domains import registry
+
 VALID, INVALID, UNKNOWN = "valid", "invalid", "unknown"
 
 
@@ -114,6 +116,7 @@ def check(problem: dict, lines: list[str]) -> dict:
     var = problem_variable(problem)
     prompt_expr, _ = parse_line(problem["prompt_latex"])
     answer_expr, _ = parse_line(problem["answer_latex"])
+    hooks = registry.get_hooks(problem.get("domain"))
 
     exprs: list[sp.Basic | None] = []
     parsed_lines: list[dict] = []
@@ -133,7 +136,11 @@ def check(problem: dict, lines: list[str]) -> dict:
     for i, expr in enumerate(exprs):
         if anchor is None or expr is None:
             continue  # cannot validate this step; keep the previous anchor
-        status = _transition_status(anchor, expr, var)
+        status = None
+        if hooks is not None and hooks.transition_status is not None:
+            status = hooks.transition_status(anchor, expr, var, problem)
+        if status is None:
+            status = _transition_status(anchor, expr, var)
         if status == INVALID:
             divergent_line_index = i
             break
@@ -141,13 +148,46 @@ def check(problem: dict, lines: list[str]) -> dict:
             anchor = expr
         # UNKNOWN: keep the previous anchor for the next comparison
 
-    final_answer_correct = bool(exprs) and _final_answer_correct(exprs[-1], answer_expr, var)
+    final_answer_correct = False
+    if exprs:
+        domain_verdict = None
+        if hooks is not None and hooks.final_answer_ok is not None:
+            domain_verdict = hooks.final_answer_ok(exprs, answer_expr, var, problem)
+        if domain_verdict is not None:
+            final_answer_correct = domain_verdict
+        else:
+            final_answer_correct = _final_answer_correct(exprs[-1], answer_expr, var)
+
+    # A domain form gate ("form" in the problem JSON) can reject an
+    # equivalent-but-wrong-form final line. That failure is reported
+    # explicitly — last line marked divergent, form_ok false — so the
+    # correction flow and tutor have something to point at.
+    form_ok = True
+    if (
+        hooks is not None
+        and hooks.final_form_ok is not None
+        and exprs
+        and exprs[-1] is not None
+    ):
+        gate = hooks.final_form_ok(exprs[-1], problem)
+        if gate is False:
+            form_ok = False
+            if divergent_line_index is None:
+                divergent_line_index = len(lines) - 1
+
     all_parsed = all(e is not None for e in exprs)
-    correct = bool(exprs) and divergent_line_index is None and all_parsed and final_answer_correct
+    correct = (
+        bool(exprs)
+        and divergent_line_index is None
+        and all_parsed
+        and final_answer_correct
+        and form_ok
+    )
 
     return {
         "correct": correct,
         "divergent_line_index": divergent_line_index,
         "final_answer_correct": final_answer_correct,
+        "form_ok": form_ok,
         "parsed_lines": parsed_lines,
     }

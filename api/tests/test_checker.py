@@ -47,6 +47,8 @@ def test_solution_fixture(fixture):
         f"{expected['divergent_line_index']})"
     )
     assert result["final_answer_correct"] == expected["final_answer_correct"]
+    if "form_ok" in expected:
+        assert result["form_ok"] == expected["form_ok"]
     assert len(result["parsed_lines"]) == len(fixture["lines"])
 
 
@@ -93,7 +95,9 @@ def test_check_result_shape():
         "correct",
         "divergent_line_index",
         "final_answer_correct",
+        "form_ok",
         "parsed_lines",
     }
+    assert result["form_ok"] is True  # no domain form gate on algebra-1 problems
     for entry in result["parsed_lines"]:
         assert set(entry.keys()) == {"raw", "parsed", "status"}

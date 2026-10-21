@@ -1,0 +1,11 @@
+{
+  "name": "factoring_correct_path",
+  "description": "Factor x^2+5x+6 directly into (x+2)(x+3)",
+  "problem_id": "a2fact-01",
+  "lines": ["(x+2)(x+3)"],
+  "expected": {
+    "correct": true,
+    "divergent_line_index": null,
+    "final_answer_correct": true
+  }
+}

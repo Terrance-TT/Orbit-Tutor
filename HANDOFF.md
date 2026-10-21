@@ -22,7 +22,7 @@ Deployed and working end-to-end:
 
 - **App (iPad or any browser):** https://web-production-b030b.up.railway.app
 - **API:** https://api-production-ea51.up.railway.app
-- Problem picker with **19 Algebra 1 problems** (one/two-step equations, distribution, combining like terms, simple factoring).
+- Problem picker with **36 problems**: 19 Algebra 1 (one/two-step equations, distribution, combining like terms, simple factoring) + **17 Algebra 2** (quadratics incl. root branching and the quadratic formula, polynomial arithmetic/expansion, factoring expressions, expression simplification). Algebra 2 runs as a checker/tutor **domain plugin** (see §5) with its own problem files, rules, and prompt addendum.
 - Full-screen Pencil-only writing with instant ink, rapid successive strokes work, palm/finger rejection.
 - Live Mathpix recognition with per-line reading confirmation (edit + confirm-all; low-confidence badges and problem-aware misread warnings).
 - Symbolic checking with divergent-line highlighting in the student's own work; quiet success state on correct answers.
@@ -46,10 +46,13 @@ Orbit/
 │   │   ├── checker.py        # Symbolic transition checker (the core)
 │   │   ├── mathpix_client.py # Live + mock Mathpix clients
 │   │   ├── tutor.py          # Kimi/Moonshot diagnosis client + prompt/parser + mock
+│   │   ├── domains/          # Domain plugins (checker/tutor hooks behind a lazy registry)
+│   │   │   ├── registry.py       # DomainHooks + lazy get_hooks(); unknown domain -> core
+│   │   │   └── algebra2.py       # Quadratics/polynomials/factoring/simplification rules
 │   │   ├── problems.py       # Problem bank loader
 │   │   └── schemas.py        # Pydantic API models
-│   ├── problems/         # 5 JSON files, 19 problems total
-│   ├── tests/            # pytest: 19 tests incl. checker fixtures + tutor tests
+│   ├── problems/         # 9 JSON files, 36 problems total (4 algebra-2 files)
+│   ├── tests/            # pytest: 44 tests incl. checker fixtures + tutor + algebra-2 tests
 │   ├── requirements.txt
 │   └── Dockerfile
 ├── web/                  # Next.js 16.4 (App Router, Turbopack) + React 19 + TS + Tailwind v4
@@ -92,7 +95,7 @@ cd web && npm install && npm run dev                                      # http
 
 **Checks before committing:**
 ```bash
-cd api && .venv/bin/python -m pytest tests/ -q     # expect 21 passed
+cd api && .venv/bin/python -m pytest tests/ -q     # expect 44 passed
 cd web && npm run lint && npm run build            # expect clean
 ```
 
@@ -118,7 +121,7 @@ Deploying from the repo root uploads the whole monorepo and Railpack fails — a
 - `GET /problems` → `[{id, title, prompt_latex, skills}]`
 - `GET /problems/{id}` → same + `answer_latex`
 - `POST /recognize` — body `{images: [dataURL,...], problem_id?}` → `{lines: [{latex, confidence, warning}]}`. When `problem_id` is provided, lines containing symbols outside the problem variable get `warning: "Possible misread…"` (OCR confidence alone is not a plausibility check); valid lines have `warning: null`.
-- `POST /check` — body `{problem_id, lines: [latex,...]}` → `{correct, divergent_line_index, final_answer_correct, parsed_lines: [{raw, parsed, status}]}`
+- `POST /check` — body `{problem_id, lines: [latex,...]}` → `{correct, divergent_line_index, final_answer_correct, form_ok, parsed_lines: [{raw, parsed, status}]}`. `form_ok` is always present (default `true`); a domain form gate sets it `false` and points `divergent_line_index` at the final line.
 - `POST /diagnose` — body `{problem_id, lines: [latex,...], divergent_line_index?}` → `{error_type, summary, explanation, fix_hint}`. If the index is omitted, the server recomputes it with the checker; correct/no-divergence work returns 400.
 
 **Checker (`checker.py`):**
@@ -126,6 +129,14 @@ Deploying from the repo root uploads the whole monorepo and Railpack fails — a
 - Each line is validated against the previous trusted line (starting at the problem prompt): for equations, **solution sets must match** (`solveset` over the reals). First line whose transition fails = `divergent_line_index` (0-based). This is why alternative valid methods are accepted by construction.
 - Lines with free symbols other than the problem variable are marked **unparseable** (antlr reads garbage like "garbage" as `g*a*r*b*a*g*e`, so syntax success ≠ real math). Unparseable ≠ invalid, but blocks `correct`.
 - Expression (non-equation) lines fall back to `simplify(a-b)==0` equivalence; `unknown` transitions keep the previous anchor.
+
+**Domain plugins (`domains/`):** a problem opts in with `"domain": "<name>"` in its JSON. `registry.get_hooks()` lazy-imports `domains/<name>.py` and returns its `DomainHooks` (`transition_status`, `final_answer_ok`, `final_form_ok`, `tutor_prompt_addendum`, `extra_error_types`; each returns `None` to defer to core). Problems without a `domain` key never import domain code — a fault in a domain module can only affect its own problems. Unknown domain names degrade to core behavior.
+
+**Algebra 2 rules (`domains/algebra2.py`):**
+- *Root branching:* an equation line whose solution set is a non-empty subset of the problem's own solution set is valid — so two-root quadratics can be solved one root per line (`x=-2` then `x=3`). Final answer = union of strict-subset branch lines equals the answer set, or the last line's set matches outright.
+- *Polynomial inequality:* for expression tasks, a nonzero polynomial `expand(a-b)` proves non-equivalence (simplify alone can only prove equality), so wrong factor pairs diverge instead of going `unknown`.
+- *Form gates* via `"form"` in the problem JSON: `"factored"` (Mul of Adds / Pow of Add), `"expanded"` (no factored shape), `"simplified"` (like terms collected + canon-equal to `simplify(expr)`; the canon round-trip via `sstr`/`sympify` neutralizes antlr's nested-Add parse shape). Failure → `form_ok: false` + last line marked divergent, so the correction flow and `/diagnose` still work.
+- Two-root quadratic `answer_latex` is encoded as a factored equation (`(x+2)(x-3)=0`); `"x=-2 \text{ or } x=3"` does not parse. **Parser quirk:** `3x(x+2)` is read as function application `x(x+2)` — write GCF answers with a power base (`x^2(x+2)`) or an explicit `\cdot`.
 
 **Mathpix client (`mathpix_client.py`):**
 - Request: `POST https://api.mathpix.com/v3/text` with `app_id`/`app_key` headers, body `{src: dataURL, formats: ["text", "latex_styled"], include_line_data: true}`. **`include_line_data` is top-level** — nesting it under `data_options` silently breaks parsing.
@@ -137,9 +148,10 @@ Deploying from the repo root uploads the whole monorepo and Railpack fails — a
 
 **Tutor (`tutor.py`):**
 - The checker finds the divergent line deterministically; the LLM only classifies and explains it. Prompt includes the problem, known answer, and numbered student lines with `FIRST WRONG LINE` marked. Response must be JSON with `error_type`, `summary`, `explanation`, `fix_hint`; fenced/prose-wrapped JSON is tolerated and unknown error types map to `other`.
+- Domain hooks (when the problem declares a domain) append a `Domain context` addendum to the prompt and extend the allowed `error_type` set (algebra 2 adds `factoring_pair_error`, `expansion_error`, `incomplete_form`). A form-gate failure on the final line is marked `FIRST WRONG LINE (final answer not in the requested form)` so the LLM explains the missing form instead of hunting for a math error. `parse_diagnosis(text, allowed_types=None)` takes the extended set; `MockTutorClient` bypasses prompt construction — test prompt content via `build_messages` directly.
 - Uses Moonshot/Kimi's OpenAI-compatible `POST {TUTOR_BASE_URL}/chat/completions` with bearer `TUTOR_API_KEY`. `TUTOR_MOCK=false` with no key → 503 (never silently mock in prod); upstream/parse failures → 502. `MockTutorClient` is for local dev only.
 
-**Problem bank:** each JSON file is a list of `{id, title, prompt_latex, answer_latex, skills}`. No scripted solution paths — valid routes emerge from symbolic checking. Add problems by adding entries; IDs must be unique.
+**Problem bank:** each JSON file is a list of `{id, title, prompt_latex, answer_latex, skills}` plus optional `domain` (e.g. `"algebra2"`) and `form` (`"factored"|"expanded"|"simplified"`). No scripted solution paths — valid routes emerge from symbolic checking. Add problems by adding entries; IDs must be unique across all files.
 
 ## 6. The ink engine — do not casually rewrite
 
@@ -162,7 +174,7 @@ Deploying from the repo root uploads the whole monorepo and Railpack fails — a
 
 ## 8. What to build next (in priority order)
 
-1. **Expand math coverage** as a family of checkers behind one interface: next easiest = quadratics, systems of equations, expression simplification (equivalence rather than solution-set mode), each with pytest fixtures and domain-specific tutor prompts. Each domain chat owns its divergent-line/checker rules, problem bank, and tutor prompts; the correction UI is already generic. Trig/calculus later (LaTeX parsing gets fragile). Word problems/geometry/proofs need an LLM-based checker, not SymPy.
+1. ~~Expand math coverage~~ **Partially done:** domain-plugin framework (`api/app/domains/`) + Algebra 2 (quadratics, polynomial arithmetic, factoring, simplification) with fixtures and domain tutor prompts. Next via the same interface: systems of equations. Trig/calculus later (LaTeX parsing gets fragile). Word problems/geometry/proofs need an LLM-based checker, not SymPy.
 2. **Follow-up verification problem** after a fix, then learner-aware next-step routing (practice/video/drill/next) once the main math domains are covered.
 3. **Explanation-style escalation and self-correction first** — where appropriate, tell the student an error exists between lines N–M before showing the full diagnosis; if one explanation style doesn't land, try another (visual, numeric example, analogy).
 4. **Learner model** (misconception log, explanation-style preferences) — needs a database (none yet; all state is client-side + localStorage). Deliberately deferred until domain coverage is in place.

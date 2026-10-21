@@ -44,6 +44,7 @@ class CheckResponse(BaseModel):
     correct: bool
     divergent_line_index: int | None
     final_answer_correct: bool
+    form_ok: bool = True  # false when a domain form gate rejected the last line
     parsed_lines: list[ParsedLine]
 
 

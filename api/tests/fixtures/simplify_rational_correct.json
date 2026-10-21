@@ -1,0 +1,11 @@
+{
+  "name": "simplify_rational_correct",
+  "description": "Cancel (x-2) step by step down to x+2",
+  "problem_id": "simp-02",
+  "lines": ["\\frac{(x+2)(x-2)}{x-2}", "x+2"],
+  "expected": {
+    "correct": true,
+    "divergent_line_index": null,
+    "final_answer_correct": true
+  }
+}

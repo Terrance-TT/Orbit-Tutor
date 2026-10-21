@@ -1,0 +1,38 @@
+[
+  {
+    "id": "poly-01",
+    "title": "Expand two binomials",
+    "prompt_latex": "(x+2)(x+3)",
+    "answer_latex": "x^2+5x+6",
+    "skills": ["polynomial-arithmetic", "expanding", "algebra-2"],
+    "domain": "algebra2",
+    "form": "expanded"
+  },
+  {
+    "id": "poly-02",
+    "title": "Expand with a leading coefficient",
+    "prompt_latex": "3(x-2)(x+4)",
+    "answer_latex": "3x^2+6x-24",
+    "skills": ["polynomial-arithmetic", "expanding", "algebra-2"],
+    "domain": "algebra2",
+    "form": "expanded"
+  },
+  {
+    "id": "poly-03",
+    "title": "Add two polynomials",
+    "prompt_latex": "(3x^2+2x-5)+(x^2-7x+1)",
+    "answer_latex": "4x^2-5x-4",
+    "skills": ["polynomial-arithmetic", "combining-like-terms", "algebra-2"],
+    "domain": "algebra2",
+    "form": "expanded"
+  },
+  {
+    "id": "poly-04",
+    "title": "Square a binomial",
+    "prompt_latex": "(2x-3)^2",
+    "answer_latex": "4x^2-12x+9",
+    "skills": ["polynomial-arithmetic", "binomial-square", "algebra-2"],
+    "domain": "algebra2",
+    "form": "expanded"
+  }
+]

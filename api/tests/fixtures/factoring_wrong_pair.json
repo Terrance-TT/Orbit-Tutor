@@ -1,0 +1,11 @@
+{
+  "name": "factoring_wrong_pair",
+  "description": "Wrong factor pair (1 and 6 give 7x, not 5x) is provably non-equivalent: divergent at line 0",
+  "problem_id": "a2fact-01",
+  "lines": ["(x+1)(x+6)"],
+  "expected": {
+    "correct": false,
+    "divergent_line_index": 0,
+    "final_answer_correct": false
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "name": "quad_formula_path",
+  "description": "Quadratic-formula route: discriminant line, then each root on its own line",
+  "problem_id": "quad-05",
+  "lines": [
+    "2x^2-7x+3=0",
+    "x=\\frac{7+\\sqrt{49-24}}{4}",
+    "x=3",
+    "x=\\frac{1}{2}"
+  ],
+  "expected": {
+    "correct": true,
+    "divergent_line_index": null,
+    "final_answer_correct": true
+  }
+}

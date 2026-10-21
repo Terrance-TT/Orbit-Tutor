@@ -1,0 +1,11 @@
+{
+  "name": "quad_root_branching",
+  "description": "Two-root quadratic solved by stating each root on its own line; union of branches covers the answer",
+  "problem_id": "quad-01",
+  "lines": ["x^2-x-6=0", "(x+2)(x-3)=0", "x=-2", "x=3"],
+  "expected": {
+    "correct": true,
+    "divergent_line_index": null,
+    "final_answer_correct": true
+  }
+}

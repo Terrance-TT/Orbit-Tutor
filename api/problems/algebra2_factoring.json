@@ -1,0 +1,38 @@
+[
+  {
+    "id": "a2fact-01",
+    "title": "Factor a trinomial",
+    "prompt_latex": "x^2+5x+6",
+    "answer_latex": "(x+2)(x+3)",
+    "skills": ["factoring", "trinomials", "algebra-2"],
+    "domain": "algebra2",
+    "form": "factored"
+  },
+  {
+    "id": "a2fact-02",
+    "title": "Difference of squares",
+    "prompt_latex": "x^2-9",
+    "answer_latex": "(x+3)(x-3)",
+    "skills": ["factoring", "difference-of-squares", "algebra-2"],
+    "domain": "algebra2",
+    "form": "factored"
+  },
+  {
+    "id": "a2fact-03",
+    "title": "Pull out the GCF first",
+    "prompt_latex": "x^3+2x^2",
+    "answer_latex": "x^2(x+2)",
+    "skills": ["factoring", "gcf", "algebra-2"],
+    "domain": "algebra2",
+    "form": "factored"
+  },
+  {
+    "id": "a2fact-04",
+    "title": "Factor a perfect square trinomial",
+    "prompt_latex": "x^2-8x+16",
+    "answer_latex": "(x-4)^2",
+    "skills": ["factoring", "perfect-squares", "algebra-2"],
+    "domain": "algebra2",
+    "form": "factored"
+  }
+]
